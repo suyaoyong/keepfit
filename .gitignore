@@ -1,0 +1,9 @@
+﻿# 忽略规格与规划产物
+specs/
+
+# 临时与编辑器文件
+.DS_Store
+*.log
+*.tmp
+.idea/
+.vscode/
