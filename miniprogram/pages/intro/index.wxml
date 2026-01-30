@@ -1,0 +1,43 @@
+<view class="page">
+  <view class="hero">
+    <view class="badge">囚徒健身 · 训练计划</view>
+    <view class="title">KeepFit</view>
+    <view class="subtitle">从基础到登峰造极，六艺进阶，一步一关。</view>
+    <view class="hero-stats">
+      <view class="stat">
+        <view class="stat-value">6</view>
+        <view class="stat-label">大动作</view>
+      </view>
+      <view class="stat">
+        <view class="stat-value">10</view>
+        <view class="stat-label">进阶式</view>
+      </view>
+      <view class="stat">
+        <view class="stat-value">5</view>
+        <view class="stat-label">训练计划</view>
+      </view>
+    </view>
+    <view class="cta-row">
+      <button class="primary-button" bindtap="handleStart">开始规划</button>
+      <view class="cta-note">已支持按周 / 月 / 日历排期</view>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">你将获得</view>
+    <view class="panel-item">自动生成今日训练目标</view>
+    <view class="panel-item">六大动作阶段化进度</view>
+    <view class="panel-item">训练日记与临时加练</view>
+    <view class="panel-item">云端可维护的训练方法</view>
+  </view>
+
+  <view class="preview">
+    <view class="preview-title">入门路径</view>
+    <view class="chips">
+      <view class="chip">初试身手</view>
+      <view class="chip">渐入佳境</view>
+      <view class="chip">炉火纯青</view>
+    </view>
+    <view class="preview-note">达到四艺第六式，解锁桥与倒立撑。</view>
+  </view>
+</view>

@@ -1,0 +1,24 @@
+<view class="page">
+  <view class="page-title">训练历史</view>
+  <view class="page-desc">查看最近的训练记录。</view>
+
+  <view class="empty" wx:if="{{loading}}">
+    <view class="empty-text">正在加载训练记录…</view>
+  </view>
+
+  <view class="empty" wx:elif="{{errorMessage}}">
+    <view class="empty-text">{{errorMessage}}</view>
+    <button class="secondary-button" bindtap="loadHistory">重试加载</button>
+  </view>
+
+  <view class="section" wx:elif="{{records.length}}">
+    <view class="record" wx:for="{{records}}" wx:key="_id">
+      <view class="record-title">{{item.date}} · {{item.exerciseName || item.exerciseId}}</view>
+      <view class="record-meta">组数 {{item.sets}} · 次数 {{item.reps}} · 时长 {{item.duration}} 分钟 · RPE {{item.rpe}}</view>
+    </view>
+  </view>
+
+  <view class="empty" wx:else>
+    <view class="empty-text">暂无训练记录</view>
+  </view>
+</view>

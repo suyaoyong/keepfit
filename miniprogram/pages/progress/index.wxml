@@ -1,0 +1,29 @@
+<view class="page">
+  <view class="header">
+    <view class="title">进度</view>
+    <view class="subtitle">六大动作的阶段分布</view>
+  </view>
+
+  <view class="card empty" wx:if="{{!hasPlan}}">
+    <view class="card-title">尚未创建计划</view>
+    <view class="empty-text">请先完成计划设置。</view>
+    <button class="primary-button" bindtap="onGoPlanSetup">去设置计划</button>
+  </view>
+
+  <view wx:else>
+    <view class="grid">
+      <view class="progress-card" wx:for="{{progressItems}}" wx:key="exerciseId">
+        <view class="progress-name">{{item.exerciseName}}</view>
+        <view class="progress-level">当前：{{item.currentStage.name}}</view>
+        <view class="progress-next">下一：{{item.nextStage.name}}</view>
+        <view class="progress-cond">{{item.unlockCondition}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">操作</view>
+      <button class="secondary-button" bindtap="onGoHistory">查看训练历史</button>
+      <button class="ghost-button" bindtap="onResetPlan">重置计划</button>
+    </view>
+  </view>
+</view>

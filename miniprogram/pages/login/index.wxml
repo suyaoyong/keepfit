@@ -1,0 +1,24 @@
+<view class="page">
+  <view class="header">
+    <view class="title">登录</view>
+    <view class="subtitle">获取微信授权，用于同步训练计划与进度。</view>
+  </view>
+
+  <view class="card">
+    <view class="card-top">
+      <view class="avatar-ring"></view>
+      <view class="card-title">专属训练档案</view>
+      <view class="card-desc">用于保存计划、排期和训练日记。</view>
+    </view>
+    <view class="info">
+      <view class="info-row">仅获取头像与昵称</view>
+      <view class="info-row">用于云端同步与换机恢复</view>
+      <view class="info-row">随时可重置或重新授权</view>
+    </view>
+  </view>
+
+  <button class="primary-button" loading="{{loading}}" bindtap="handleLogin">
+    微信一键登录
+  </button>
+  <view class="hint">登录后进入计划设置</view>
+</view>

@@ -1,0 +1,86 @@
+<view class="page">
+  <view class="header">
+    <view class="title">今日训练</view>
+    <view class="subtitle">基于你的计划自动生成目标</view>
+  </view>
+
+  <view class="card" wx:if="{{todayPlan}}">
+    <view class="card-title">今日目标</view>
+    <view class="meta">
+      <view class="meta-item">日期：{{todayPlan.date}}</view>
+      <view class="meta-item">动作数：{{todayPlan.exercises.length}}</view>
+    </view>
+    <view class="exercise-list">
+      <view class="exercise-row" wx:for="{{todayPlan.exercises}}" wx:key="id">
+        <view class="exercise-name">{{exerciseNameMap[item] || item}}</view>
+        <view class="exercise-target">
+          第 {{todayPlan.targets[item].level}} 级
+          <text wx:if="{{todayPlan.targets[item].setsRange}}"> · {{todayPlan.targets[item].setsRange}} 组</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card empty" wx:if="{{!todayPlan}}">
+    <view class="card-title">未生成今日训练</view>
+    <view class="empty-text">请先完成计划设置，或重新刷新。</view>
+    <button class="secondary-button" bindtap="loadToday">刷新今日训练</button>
+  </view>
+
+  <view class="card">
+    <view class="card-title">训练记录</view>
+    <view class="field">
+      <view class="label">动作</view>
+      <picker mode="selector" range="{{exerciseOptions}}" value="{{selectedExerciseIndex}}" bindchange="onExerciseChange">
+        <view class="picker">{{exerciseOptions[selectedExerciseIndex] || '请选择动作'}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="label">组数</view>
+      <input class="input" type="number" data-field="sets" bindinput="onInputChange" value="{{form.sets}}" placeholder="例如 3" />
+    </view>
+    <view class="field">
+      <view class="label">次数</view>
+      <input class="input" type="number" data-field="reps" bindinput="onInputChange" value="{{form.reps}}" placeholder="例如 12" />
+    </view>
+    <view class="field">
+      <view class="label">时长（分钟）</view>
+      <input class="input" type="number" data-field="duration" bindinput="onInputChange" value="{{form.duration}}" placeholder="例如 15" />
+    </view>
+    <view class="field">
+      <view class="label">主观强度（RPE 1-10）</view>
+      <input class="input" type="number" data-field="rpe" bindinput="onInputChange" value="{{form.rpe}}" placeholder="例如 7" />
+    </view>
+    <view class="field">
+      <view class="label">备注（可选）</view>
+      <input class="input" data-field="notes" bindinput="onInputChange" value="{{form.notes}}" placeholder="如动作感觉、疲劳等" />
+    </view>
+    <button class="primary-button" loading="{{submitting}}" bindtap="onSubmit">提交记录</button>
+    <button class="secondary-button" loading="{{submitting}}" bindtap="onDiarySubmit">保存为训练日记</button>
+  </view>
+
+  <view class="card">
+    <view class="card-title">智能录入</view>
+    <view class="field">
+      <view class="label">训练描述</view>
+      <textarea
+        class="textarea"
+        placeholder="例如：俯卧撑 3 组 每组 12 次 RPE 7"
+        bindinput="onAiInputChange"
+        value="{{aiRawText}}"
+      />
+    </view>
+    <button class="secondary-button" loading="{{aiLoading}}" bindtap="onAiParse">AI 解析</button>
+    <view class="ai-result" wx:if="{{aiResult}}">
+      <view class="ai-line">解析动作：{{aiResult.exerciseId || "未识别"}}</view>
+      <view class="ai-line">组数：{{aiResult.sets || "-"}} / 次数：{{aiResult.reps || "-"}}</view>
+      <view class="ai-line">时长：{{aiResult.duration || "-"}} / RPE：{{aiResult.rpe || "-"}}</view>
+      <view class="ai-line">置信度：{{aiResult.confidence || 0}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">需要重置计划？</view>
+    <button class="ghost-button" bindtap="onResetPlan">重新设置计划</button>
+  </view>
+</view>

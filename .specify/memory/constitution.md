@@ -9,6 +9,13 @@
 - 不引入社交、排行或竞赛类需求。
 - 推荐计划仅基于用户填写的训练基础信息与体系规则，不涉及外部数据。
 
+## 项目约束（微信云开发模板）
+- 以微信开发者工具云开发模板为基础进行删改。
+- 不新建 project.config.json。
+- 不修改 appid 与云开发环境配置。
+- 允许修改与新增范围：miniprogram/pages、miniprogram/services、miniprogram/app.json、miniprogram/data、cloudfunctions/*。
+- 云函数目录策略：新增独立云函数目录（profile、recommendation、plan、workout、progress、auth），保留模板 quickstartFunctions 不做改动。
+
 ## 质量原则
 - 计划与设计产物必须可追溯到规格条目。
 - 文档需清晰、可执行、可验证。
