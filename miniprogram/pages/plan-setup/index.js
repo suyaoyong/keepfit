@@ -4,8 +4,9 @@ const { callCloud } = require("../../services/api");
 const PLAN_ID_KEY = "activePlanId";
 
 const WEEK_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
-const DEFAULT_FOUR = ["push", "leg", "pull", "squat"];
 const DEFAULT_SIX = ["push", "leg", "pull", "squat", "bridge", "hand"];
+const ABILITY_LEVEL_OPTIONS = ["初试身手", "渐入佳境", "炉火纯青", "闭关修炼"];
+const LOCKED_IN_STARTER = ["bridge", "hand"];
 
 function toDateString(date) {
   const year = date.getFullYear();
@@ -74,27 +75,26 @@ function buildCalendarGrid() {
   return cells;
 }
 
-function parseWeeklySessions(value) {
-  const match = String(value || "").match(/\d+/);
-  return match ? Number(match[0]) : 0;
+function getLockedExerciseIdsByAbility(abilityLevel) {
+  return abilityLevel === "初试身手" ? LOCKED_IN_STARTER : [];
 }
 
 Page({
   data: {
     profile: {
-      abilityLevel: "",
-      trainingFrequency: "",
-      sessionDuration: "",
-      injuryNotes: "",
+      abilityLevel: ABILITY_LEVEL_OPTIONS[0],
     },
+    abilityLevelOptions: ABILITY_LEVEL_OPTIONS,
+    abilityLevelIndex: 0,
     planName: "",
-    planType: "自建",
     exercises: [],
     exerciseOptions: [],
+    scheduleExerciseOptions: [],
+    scheduleExerciseIds: [],
+    scheduleExerciseIndex: 0,
     levelOptions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     startLevels: {},
     submitting: false,
-    recommendation: null,
     scheduleType: "week",
     weekDays: [],
     monthGrid: [],
@@ -102,6 +102,12 @@ Page({
     methodExerciseIndex: 0,
     methodLevel: 1,
     methodDetail: null,
+    lockedExerciseIds: ["bridge", "hand"],
+    currentStageName: "初试身手",
+    weekScheduleRows: [],
+    activeScheduleExerciseId: "",
+    exerciseScheduleMap: {},
+    levelNameMap: {},
   },
 
   async onLoad() {
@@ -125,26 +131,61 @@ Page({
     });
 
     await this.loadProfile();
+    await this.loadStageLock();
+    this.initExerciseScheduleMap();
+    await this.loadCurrentPlan();
     await this.loadMethodDetail();
+    await this.loadLevelNames();
+    this.buildWeekScheduleRows();
   },
 
   async loadProfile() {
     try {
       const profile = await callCloud("profile", { action: "get" });
       if (profile) {
-        this.setData({ profile });
+        const abilityLevel = this.normalizeAbilityLevel(profile.abilityLevel);
+        this.setData({
+          profile: {
+            ...this.data.profile,
+            ...profile,
+            abilityLevel,
+          },
+          abilityLevelIndex: ABILITY_LEVEL_OPTIONS.indexOf(abilityLevel),
+        });
       }
     } catch (error) {
       // ignore load errors
     }
   },
 
-  onInputChange(e) {
-    const field = e.currentTarget.dataset.field;
-    const value = e.detail.value || "";
+  normalizeAbilityLevel(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return ABILITY_LEVEL_OPTIONS[0];
+    }
+    if (ABILITY_LEVEL_OPTIONS.includes(raw)) {
+      return raw;
+    }
+    if (raw.includes("闭")) {
+      return "闭关修炼";
+    }
+    if (raw.includes("炉")) {
+      return "炉火纯青";
+    }
+    if (raw.includes("渐") || raw.includes("中")) {
+      return "渐入佳境";
+    }
+    return "初试身手";
+  },
+
+  onAbilityLevelChange(e) {
+    const index = Number(e.detail.value) || 0;
+    const nextLevel = ABILITY_LEVEL_OPTIONS[index] || ABILITY_LEVEL_OPTIONS[0];
     this.setData({
-      [`profile.${field}`]: value,
+      abilityLevelIndex: index,
+      "profile.abilityLevel": nextLevel,
     });
+    this.applyStageLock(nextLevel);
   },
 
   onPlanInputChange(e) {
@@ -155,11 +196,6 @@ Page({
     });
   },
 
-  onSelectPlanType(e) {
-    const type = e.currentTarget.dataset.type || "自建";
-    this.setData({ planType: type });
-  },
-
   onSelectLevel(e) {
     const exerciseId = e.currentTarget.dataset.id;
     const index = e.detail.value;
@@ -167,6 +203,51 @@ Page({
     this.setData({
       [`startLevels.${exerciseId}`]: level,
     });
+    this.loadLevelName(exerciseId, level);
+  },
+
+  onToggleWeekExerciseDay(e) {
+    const exerciseId = e.currentTarget.dataset.exerciseId;
+    const day = Number(e.currentTarget.dataset.day);
+    if (!exerciseId || !day) {
+      return;
+    }
+    if (this.data.lockedExerciseIds.includes(exerciseId)) {
+      return;
+    }
+    const current = this.data.exerciseScheduleMap[exerciseId]?.daysOfWeek || [];
+    const next = current.includes(day)
+      ? current.filter((item) => item !== day)
+      : current.concat(day);
+    this.setData(
+      {
+        [`exerciseScheduleMap.${exerciseId}.daysOfWeek`]: next,
+      },
+      () => this.buildWeekScheduleRows()
+    );
+  },
+
+  onSelectScheduleExercise(e) {
+    const index = Number(e.detail.value) || 0;
+    const exerciseId = this.data.scheduleExerciseIds[index];
+    if (!exerciseId) {
+      return;
+    }
+    this.setData({ activeScheduleExerciseId: exerciseId, scheduleExerciseIndex: index }, () => {
+      this.syncMonthGridSelection();
+    });
+  },
+
+  syncMonthGridSelection() {
+    const active = this.data.activeScheduleExerciseId;
+    if (!active) {
+      return;
+    }
+    const days = this.data.exerciseScheduleMap[active]?.daysOfMonth || [];
+    const monthGrid = this.data.monthGrid.map((item) =>
+      item.date ? { ...item, selected: days.includes(Number(item.label)) } : item
+    );
+    this.setData({ monthGrid });
   },
 
   onMethodExerciseChange(e) {
@@ -187,16 +268,63 @@ Page({
   onSelectScheduleType(e) {
     const type = e.currentTarget.dataset.type;
     if (type && type !== this.data.scheduleType) {
-      this.setData({ scheduleType: type });
+      this.setData({ scheduleType: type }, () => {
+        if (type === "month") {
+          this.syncMonthGridSelection();
+        }
+      });
     }
   },
 
-  onToggleWeekDay(e) {
-    const date = e.currentTarget.dataset.date;
-    const weekDays = this.data.weekDays.map((item) =>
-      item.date === date ? { ...item, selected: !item.selected } : item
+  async loadCurrentPlan() {
+    try {
+      const plan = await callCloud("plan", { action: "current" });
+      if (!plan?.planId) {
+        return;
+      }
+      const nextStartLevels = { ...this.data.startLevels, ...(plan.startLevels || {}) };
+      const nextScheduleType = plan.scheduleType || this.data.scheduleType;
+      const nextPlanName = plan.planName || this.data.planName;
+
+      this.setData(
+        {
+          planName: nextPlanName,
+          scheduleType: nextScheduleType,
+          startLevels: nextStartLevels,
+        },
+        async () => {
+          this.applyPlanTemplate(plan.scheduleTemplate);
+          await this.loadLevelNames();
+        }
+      );
+    } catch (error) {
+      // No active plan is acceptable on first setup.
+    }
+  },
+
+  applyPlanTemplate(template) {
+    if (!template || !template.exerciseSchedules) {
+      return;
+    }
+
+    const exerciseScheduleMap = { ...this.data.exerciseScheduleMap };
+    Object.keys(exerciseScheduleMap).forEach((id) => {
+      const item = template.exerciseSchedules[id] || {};
+      exerciseScheduleMap[id] = {
+        daysOfWeek: Array.isArray(item.daysOfWeek) ? item.daysOfWeek.slice() : [],
+        daysOfMonth: Array.isArray(item.daysOfMonth) ? item.daysOfMonth.slice() : [],
+      };
+    });
+
+    this.setData(
+      {
+        exerciseScheduleMap,
+      },
+      () => {
+        this.buildWeekScheduleRows();
+        this.syncMonthGridSelection();
+      }
     );
-    this.setData({ weekDays });
   },
 
   onToggleMonthDay(e) {
@@ -207,7 +335,18 @@ Page({
     const monthGrid = this.data.monthGrid.map((item) =>
       item.date === date ? { ...item, selected: !item.selected } : item
     );
-    this.setData({ monthGrid });
+    this.setData({ monthGrid }, () => {
+      const active = this.data.activeScheduleExerciseId;
+      if (!active) {
+        return;
+      }
+      const daysOfMonth = monthGrid
+        .filter((item) => item.selected)
+        .map((item) => Number(item.label));
+      this.setData({
+        [`exerciseScheduleMap.${active}.daysOfMonth`]: daysOfMonth,
+      });
+    });
   },
 
   onToggleCalendarDay(e) {
@@ -222,17 +361,9 @@ Page({
   },
 
   validateProfile() {
-    const { abilityLevel, trainingFrequency, sessionDuration } = this.data.profile;
+    const { abilityLevel } = this.data.profile;
     if (!abilityLevel.trim()) {
-      wx.showToast({ title: "请填写当前能力水平", icon: "none" });
-      return false;
-    }
-    if (!trainingFrequency.trim()) {
-      wx.showToast({ title: "请填写训练频率", icon: "none" });
-      return false;
-    }
-    if (!sessionDuration.trim()) {
-      wx.showToast({ title: "请填写可用训练时长", icon: "none" });
+      wx.showToast({ title: "Please set ability level", icon: "none" });
       return false;
     }
     return true;
@@ -249,13 +380,30 @@ Page({
     return calendarGrid.filter((item) => item.selected).map((item) => item.date);
   },
 
+  buildWeekScheduleRows() {
+    const rows = this.data.exercises.map((exercise) => {
+      const selected = this.data.exerciseScheduleMap[exercise.id]?.daysOfWeek || [];
+      const days = WEEK_LABELS.map((label, index) => {
+        const day = index + 1;
+        return {
+          day,
+          label,
+          selected: selected.includes(day),
+        };
+      });
+      return {
+        id: exercise.id,
+        name: exercise.name,
+        days,
+        locked: this.data.lockedExerciseIds.includes(exercise.id),
+      };
+    });
+    this.setData({ weekScheduleRows: rows });
+  },
+
   getExerciseIds() {
-    const recommendation = this.data.recommendation;
-    if (recommendation?.exercises?.length) {
-      return recommendation.exercises;
-    }
-    const scope = recommendation?.exerciseScope || "six";
-    return scope === "four" ? DEFAULT_FOUR : DEFAULT_SIX;
+    const exerciseIds = DEFAULT_SIX;
+    return exerciseIds.filter((id) => !this.data.lockedExerciseIds.includes(id));
   },
 
   buildTargets(exerciseIds, setsRange) {
@@ -266,20 +414,6 @@ Page({
       };
       return acc;
     }, {});
-  },
-
-  autoPickWeekDates(count) {
-    const available = this.data.weekDays;
-    if (!count || !available.length) {
-      return [];
-    }
-    const step = Math.floor(available.length / count);
-    const dates = [];
-    for (let i = 0; i < count; i += 1) {
-      const index = Math.min(i * step, available.length - 1);
-      dates.push(available[index].date);
-    }
-    return Array.from(new Set(dates));
   },
 
   buildSchedulePayload(dates, exerciseIds, setsRange) {
@@ -293,10 +427,140 @@ Page({
     }));
   },
 
+  buildScheduleTemplate(setsRange) {
+    const exerciseSchedules = {};
+    const exerciseIds = this.getExerciseIds();
+    exerciseIds.forEach((id) => {
+      const mapping = this.data.exerciseScheduleMap[id] || {};
+      exerciseSchedules[id] = {
+        daysOfWeek: mapping.daysOfWeek || [],
+        daysOfMonth: mapping.daysOfMonth || [],
+      };
+    });
+    return {
+      type: this.data.scheduleType,
+      exerciseSchedules,
+      exercises: exerciseIds,
+      targets: this.buildTargets(exerciseIds, setsRange),
+    };
+  },
+
+  hasTemplateSelection(template) {
+    if (!template?.exerciseSchedules) {
+      return false;
+    }
+    return Object.values(template.exerciseSchedules).some((item) => {
+      const daysOfWeek = item?.daysOfWeek || [];
+      const daysOfMonth = item?.daysOfMonth || [];
+      return daysOfWeek.length || daysOfMonth.length;
+    });
+  },
+  computeWeeklySessions(scheduleType, scheduleTemplate, schedules) {
+    if (scheduleType === "calendar") {
+      return Array.isArray(schedules) ? schedules.length : 0;
+    }
+    const exerciseSchedules = scheduleTemplate?.exerciseSchedules || {};
+    if (scheduleType === "week") {
+      const days = new Set();
+      Object.values(exerciseSchedules).forEach((item) => {
+        (item?.daysOfWeek || []).forEach((day) => days.add(day));
+      });
+      return days.size;
+    }
+    if (scheduleType === "month") {
+      const days = new Set();
+      Object.values(exerciseSchedules).forEach((item) => {
+        (item?.daysOfMonth || []).forEach((day) => days.add(day));
+      });
+      return days.size;
+    }
+    return 0;
+  },
+
   async saveProfile() {
     return callCloud("profile", {
       action: "set",
       profile: this.data.profile,
+    });
+  },
+
+  async loadStageLock() {
+    try {
+      const progress = await callCloud("progress", { action: "get" });
+      const abilityLevel = this.normalizeAbilityLevel(this.data.profile?.abilityLevel);
+      const stageName = abilityLevel || progress?.stageName || "初试身手";
+      this.applyStageLock(stageName);
+    } catch (error) {
+      const abilityLevel = this.normalizeAbilityLevel(this.data.profile?.abilityLevel);
+      this.applyStageLock(abilityLevel || "初试身手");
+    }
+  },
+
+  applyStageLock(stageName) {
+    const normalizedStage = this.normalizeAbilityLevel(stageName);
+    const lockedExerciseIds = getLockedExerciseIdsByAbility(normalizedStage);
+    this.setData(
+      {
+        currentStageName: normalizedStage,
+        lockedExerciseIds,
+      },
+      () => {
+        this.refreshScheduleExerciseOptions();
+        this.buildWeekScheduleRows();
+      }
+    );
+  },
+
+  refreshScheduleExerciseOptions() {
+    const availableExercises = this.data.exercises.filter(
+      (item) => !this.data.lockedExerciseIds.includes(item.id)
+    );
+    const scheduleExerciseIds = availableExercises.map((item) => item.id);
+    const scheduleExerciseOptions = availableExercises.map((item) => item.name);
+    const hasCurrent = scheduleExerciseIds.includes(this.data.activeScheduleExerciseId);
+    const activeScheduleExerciseId = hasCurrent
+      ? this.data.activeScheduleExerciseId
+      : scheduleExerciseIds[0] || "";
+    const scheduleExerciseIndex = Math.max(0, scheduleExerciseIds.indexOf(activeScheduleExerciseId));
+    this.setData(
+      {
+        scheduleExerciseOptions,
+        scheduleExerciseIds,
+        activeScheduleExerciseId,
+        scheduleExerciseIndex,
+        methodExerciseIndex: activeScheduleExerciseId
+          ? this.data.exercises.findIndex((item) => item.id === activeScheduleExerciseId)
+          : 0,
+      },
+      () => {
+        if (this.data.scheduleType === "month") {
+          this.syncMonthGridSelection();
+        }
+      }
+    );
+  },
+
+  initExerciseScheduleMap() {
+    const exerciseScheduleMap = {};
+    this.data.exercises.forEach((exercise) => {
+      exerciseScheduleMap[exercise.id] = {
+        daysOfWeek: [],
+        daysOfMonth: [],
+      };
+    });
+    const availableExercises = this.data.exercises.filter(
+      (item) => !this.data.lockedExerciseIds.includes(item.id)
+    );
+    const firstAvailable = availableExercises[0] || null;
+    this.setData({
+      exerciseScheduleMap,
+      activeScheduleExerciseId: firstAvailable ? firstAvailable.id : "",
+      scheduleExerciseOptions: availableExercises.map((item) => item.name),
+      scheduleExerciseIds: availableExercises.map((item) => item.id),
+      scheduleExerciseIndex: 0,
+      methodExerciseIndex: firstAvailable
+        ? this.data.exercises.findIndex((item) => item.id === firstAvailable.id)
+        : 0,
     });
   },
 
@@ -317,47 +581,54 @@ Page({
     }
   },
 
-  async onGenerateRecommendation() {
-    if (!this.validateProfile()) {
-      return;
-    }
-    this.setData({ submitting: true, planType: "推荐" });
-    try {
-      await this.saveProfile();
-      const recommendation = await callCloud("recommendation", {
-        profile: this.data.profile,
-        startLevels: this.data.startLevels,
-      });
-      this.setData({ recommendation });
-      wx.showToast({ title: "推荐计划已生成", icon: "success" });
-    } catch (error) {
-      wx.showToast({ title: error.message || "推荐失败", icon: "none" });
-    } finally {
-      this.setData({ submitting: false });
-    }
+  async loadLevelNames() {
+    const tasks = this.data.exercises.map((exercise) => {
+      const level = Number(this.data.startLevels[exercise.id]) || 1;
+      return this.loadLevelName(exercise.id, level);
+    });
+    await Promise.all(tasks);
   },
 
+  async loadLevelName(exerciseId, level) {
+    if (!exerciseId) {
+      return;
+    }
+    try {
+      const response = await callCloud("method", { exerciseId, level });
+      const levelName = response?.items?.[0]?.levelName || `第${level}式`;
+      this.setData({
+        [`levelNameMap.${exerciseId}`]: `第${level}式 · ${levelName}`,
+      });
+    } catch (error) {
+      this.setData({
+        [`levelNameMap.${exerciseId}`]: `第${level}式`,
+      });
+    }
+  },
   async onCreatePlan() {
     if (!this.validateProfile()) {
       return;
     }
-
-    const recommendation = this.data.recommendation;
     const exerciseIds = this.getExerciseIds();
-    const setsRange = recommendation?.setsRange || "";
-    const weeklySessions =
-      recommendation?.weeklySessions || parseWeeklySessions(this.data.profile.trainingFrequency);
-
-    let dates = this.getSelectedDates();
-    if (!dates.length && this.data.scheduleType === "week" && weeklySessions) {
-      dates = this.autoPickWeekDates(weeklySessions);
+    const setsRange = "";
+    
+    let schedules = [];
+    let scheduleTemplate = null;
+    if (this.data.scheduleType === "calendar") {
+      const dates = this.getSelectedDates();
+      if (!dates.length) {
+        wx.showToast({ title: "请先选择排期日期", icon: "none" });
+        return;
+      }
+      schedules = this.buildSchedulePayload(dates, exerciseIds, setsRange);
+    } else {
+      scheduleTemplate = this.buildScheduleTemplate(setsRange);
+      if (!this.hasTemplateSelection(scheduleTemplate)) {
+        wx.showToast({ title: "请先选择排期周期", icon: "none" });
+        return;
+      }
     }
-    if (!dates.length) {
-      wx.showToast({ title: "请先选择排期日期", icon: "none" });
-      return;
-    }
-
-    const schedules = this.buildSchedulePayload(dates, exerciseIds, setsRange);
+    const weeklySessions = this.computeWeeklySessions(this.data.scheduleType, scheduleTemplate, schedules);
 
     this.setData({ submitting: true });
     try {
@@ -365,16 +636,15 @@ Page({
 
       const plan = await callCloud("plan", {
         action: "create",
-        planName: this.data.planName || recommendation?.planName || "训练计划",
-        planType: recommendation ? "推荐" : this.data.planType,
-        planLevel: recommendation?.planName || "",
+        planName: this.data.planName || "\u8bad\u7ec3\u8ba1\u5212",
+        planLevel: this.normalizeAbilityLevel(this.data.profile?.abilityLevel),
         weeklySessions,
         setsRange,
-        exerciseScope: recommendation?.exerciseScope || "six",
+        exerciseScope: "six",
         scheduleType: this.data.scheduleType,
         startLevels: this.data.startLevels,
-        recommendationId: recommendation?.recommendationId || "",
         schedules,
+        scheduleTemplate,
       });
 
       if (plan?.planId) {
@@ -388,5 +658,29 @@ Page({
     } finally {
       this.setData({ submitting: false });
     }
+  },
+
+  onResetPlan() {
+    wx.showModal({
+      title: "确认重置计划",
+      content: "将停用当前计划并清空本地计划信息，是否继续？",
+      confirmText: "重置",
+      cancelText: "取消",
+      success: async (res) => {
+        if (!res.confirm) {
+          return;
+        }
+        try {
+          await callCloud("plan", { action: "reset" });
+          wx.removeStorageSync(PLAN_ID_KEY);
+          this.setData({
+            planName: "",
+          });
+          wx.showToast({ title: "计划已重置", icon: "success" });
+        } catch (error) {
+          wx.showToast({ title: error.message || "重置失败", icon: "none" });
+        }
+      },
+    });
   },
 });

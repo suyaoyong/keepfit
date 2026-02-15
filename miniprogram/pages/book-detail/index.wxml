@@ -1,0 +1,32 @@
+<view class="page">
+  <view class="header">
+    <view class="title">书籍目录</view>
+    <view class="subtitle">选择章节开始阅读</view>
+  </view>
+
+  <view class="card empty" wx:if="{{loading}}">
+    <view class="empty-text">正在加载目录...</view>
+  </view>
+
+  <view class="card empty" wx:elif="{{errorMessage}}">
+    <view class="empty-text">{{errorMessage}}</view>
+    <button class="secondary-button" bindtap="loadDetail">重试</button>
+  </view>
+
+  <block wx:elif="{{book}}">
+    <view class="hero-card">
+      <view class="book-title">{{book.title}}</view>
+      <view class="book-meta">{{book.author || '未知作者'}} · {{book.chapterCount || chapters.length}} 章</view>
+      <view class="book-intro">{{book.intro || '暂无简介'}}</view>
+      <button class="secondary-button" bindtap="onContinueRead">从上次进度继续</button>
+    </view>
+
+    <view class="card">
+      <view class="card-title">章节目录</view>
+      <view class="chapter-row" wx:for="{{chapters}}" wx:key="chapterNo" data-no="{{item.chapterNo}}" bindtap="onOpenChapter">
+        <view class="chapter-title">{{item.chapterNo}}. {{item.chapterTitle}}</view>
+        <view class="chapter-meta">{{item.wordCount || 0}} 字</view>
+      </view>
+    </view>
+  </block>
+</view>

@@ -1,50 +1,30 @@
-<view class="page">
+﻿<view class="page">
   <view class="header">
     <view class="title">计划设置</view>
-    <view class="subtitle">填写基础信息，生成计划并排期。</view>
+    <view class="subtitle">先定等级与排期，一键保存云端</view>
+  </view>
+
+  <view class="hero-card">
+    <view class="hero-top">
+      <view class="hero-badge">{{currentStageName}}</view>
+      <view class="hero-stage">六艺等级排期</view>
+    </view>
+    <view class="hero-title">先定等级，再定排期</view>
+    <view class="hero-subtitle">周/月/日历统一配置，创建后立即生效。</view>
   </view>
 
   <view class="card">
     <view class="section-title">训练基础信息</view>
     <view class="field">
       <view class="label">当前能力水平</view>
-      <input
-        class="input"
-        placeholder="例如：初级/中级/高级"
-        data-field="abilityLevel"
-        bindinput="onInputChange"
-        value="{{profile.abilityLevel}}"
-      />
-    </view>
-    <view class="field">
-      <view class="label">训练频率</view>
-      <input
-        class="input"
-        placeholder="例如：每周 3 次"
-        data-field="trainingFrequency"
-        bindinput="onInputChange"
-        value="{{profile.trainingFrequency}}"
-      />
-    </view>
-    <view class="field">
-      <view class="label">可用训练时长</view>
-      <input
-        class="input"
-        placeholder="例如：30 分钟"
-        data-field="sessionDuration"
-        bindinput="onInputChange"
-        value="{{profile.sessionDuration}}"
-      />
-    </view>
-    <view class="field">
-      <view class="label">伤病/限制（可选）</view>
-      <input
-        class="input"
-        placeholder="如肩部不适"
-        data-field="injuryNotes"
-        bindinput="onInputChange"
-        value="{{profile.injuryNotes}}"
-      />
+      <picker
+        mode="selector"
+        range="{{abilityLevelOptions}}"
+        value="{{abilityLevelIndex}}"
+        bindchange="onAbilityLevelChange"
+      >
+        <view class="picker">{{abilityLevelOptions[abilityLevelIndex]}}</view>
+      </picker>
     </view>
   </view>
 
@@ -60,29 +40,28 @@
         value="{{planName}}"
       />
     </view>
-    <view class="field">
-      <view class="label">计划类型</view>
-      <view class="pills">
-        <view class="pill {{planType === '自建' ? 'pill-active' : ''}}" data-type="自建" bindtap="onSelectPlanType">自建</view>
-        <view class="pill {{planType === '推荐' ? 'pill-active' : ''}}" data-type="推荐" bindtap="onSelectPlanType">推荐</view>
-      </view>
-    </view>
-    <view class="hint">推荐计划将按第十二章规则生成。</view>
   </view>
 
   <view class="card">
     <view class="section-title">起始等级</view>
     <view class="exercise" wx:for="{{exercises}}" wx:key="id">
-      <view class="exercise-name">{{item.name}}</view>
+      <view class="exercise-name {{lockedExerciseIds.includes(item.id) ? 'locked' : ''}}">
+        {{item.name}}
+        <text wx:if="{{lockedExerciseIds.includes(item.id)}}" class="lock-tag">（未解锁）</text>
+      </view>
       <picker
+        disabled="{{lockedExerciseIds.includes(item.id)}}"
         mode="selector"
         range="{{levelOptions}}"
         value="{{levelOptions.indexOf(startLevels[item.id])}}"
         data-id="{{item.id}}"
         bindchange="onSelectLevel"
       >
-        <view class="picker">第 {{startLevels[item.id]}} 级</view>
+        <view class="picker">第{{startLevels[item.id]}}式</view>
       </picker>
+      <view class="level-name" wx:if="{{levelNameMap[item.id]}}">
+        {{levelNameMap[item.id]}}
+      </view>
     </view>
   </view>
 
@@ -95,23 +74,44 @@
     </view>
 
     <view wx:if="{{scheduleType === 'week'}}" class="schedule-panel">
-      <view class="schedule-title">本周训练日</view>
-      <view class="week-grid">
-        <view
-          class="week-day {{item.selected ? 'selected' : ''}}"
-          wx:for="{{weekDays}}"
-          wx:key="date"
-          data-date="{{item.date}}"
-          bindtap="onToggleWeekDay"
-        >
-          <view class="week-label">{{item.label}}</view>
-          <view class="week-date">{{item.dateLabel}}</view>
+      <view class="schedule-title">每周训练安排</view>
+      <view class="week-exercise" wx:for="{{weekScheduleRows}}" wx:key="id">
+        <view class="week-exercise-name {{item.locked ? 'locked' : ''}}">
+          {{item.name}}
+        </view>
+        <view class="week-chip-row">
+          <view
+            class="week-chip {{day.selected ? 'selected' : ''}} {{item.locked ? 'disabled' : ''}}"
+            wx:for="{{item.days}}"
+            wx:for-item="day"
+            wx:key="day"
+            data-exercise-id="{{item.id}}"
+            data-day="{{day.day}}"
+            bindtap="onToggleWeekExerciseDay"
+          >
+            {{day.label}}
+          </view>
         </view>
       </view>
+      <view class="hint">周排期会自动在每周重复。</view>
     </view>
 
     <view wx:if="{{scheduleType === 'month'}}" class="schedule-panel">
-      <view class="schedule-title">本月训练日</view>
+      <view class="schedule-title">每月训练安排</view>
+      <view class="field" wx:if="{{scheduleExerciseOptions.length}}">
+        <view class="label">动作</view>
+        <picker
+          mode="selector"
+          range="{{scheduleExerciseOptions}}"
+          value="{{scheduleExerciseIndex}}"
+          bindchange="onSelectScheduleExercise"
+        >
+          <view class="picker">{{scheduleExerciseOptions[scheduleExerciseIndex]}}</view>
+        </picker>
+      </view>
+      <view class="method-empty" wx:else>
+        当前阶段无可安排动作。
+      </view>
       <view class="calendar-grid">
         <view
           class="calendar-cell {{item.empty ? 'empty' : ''}} {{item.selected ? 'selected' : ''}}"
@@ -123,6 +123,7 @@
           <view class="calendar-text">{{item.label}}</view>
         </view>
       </view>
+      <view class="hint">月排期会自动在每月重复。</view>
     </view>
 
     <view wx:if="{{scheduleType === 'calendar'}}" class="schedule-panel">
@@ -141,11 +142,10 @@
     </view>
   </view>
 
-  <view class="card" wx:if="{{recommendation}}">
-    <view class="section-title">推荐计划预览</view>
-    <view class="recommendation-row">计划：{{recommendation.planName || '-'}}</view>
-    <view class="recommendation-row">频率：{{recommendation.weeklySessions || '-'}} 次 / 周</view>
-    <view class="recommendation-row">组数范围：{{recommendation.setsRange || '-'}}</view>
+  <view class="schedule-actions">
+    <button class="primary-button" loading="{{submitting}}" bindtap="onCreatePlan">
+      创建计划并保存排期
+    </button>
   </view>
 
   <view class="card">
@@ -159,11 +159,11 @@
     <view class="field">
       <view class="label">级别</view>
       <picker mode="selector" range="{{levelOptions}}" value="{{levelOptions.indexOf(methodLevel)}}" bindchange="onMethodLevelChange">
-        <view class="picker">第 {{methodLevel}} 级</view>
+        <view class="picker">第{{methodLevel}}式</view>
       </picker>
     </view>
     <view class="method-block" wx:if="{{methodDetail}}">
-      <view class="method-title">{{methodDetail.levelName}}</view>
+      <view class="method-title">第{{methodLevel}}式 · {{methodDetail.levelName}}</view>
       <view class="method-text">{{methodDetail.method}}</view>
       <view class="method-targets">升级标准：{{methodDetail.targets.upgrade || "-"}}</view>
     </view>
@@ -172,12 +172,11 @@
     </view>
   </view>
 
-  <view class="actions">
-    <button class="secondary-button" loading="{{submitting}}" bindtap="onGenerateRecommendation">
-      生成推荐计划
-    </button>
-    <button class="primary-button" loading="{{submitting}}" bindtap="onCreatePlan">
-      创建计划并保存排期
-    </button>
+  <view class="card">
+    <view class="section-title">计划管理</view>
+    <view class="hint">若需要从头开始，可重置当前计划并重新创建。</view>
+    <button class="ghost-button" bindtap="onResetPlan">重置当前计划</button>
   </view>
 </view>
+
+

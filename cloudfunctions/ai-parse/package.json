@@ -1,9 +1,10 @@
-{
+﻿{
   "name": "ai-parse",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "wx-server-sdk": "latest"
+    "wx-server-sdk": "latest",
+    "@cloudbase/node-sdk": "latest"
   }
 }

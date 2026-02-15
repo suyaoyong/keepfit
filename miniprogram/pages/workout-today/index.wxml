@@ -96,6 +96,37 @@
 
   </view>
 
+  <view class="card">
+    <view class="card-title">智能录入</view>
+    <view class="field">
+      <view class="label">训练描述</view>
+      <textarea
+        class="textarea"
+        placeholder="例如：举腿3组每组12次，深蹲2组每组20次"
+        bindinput="onAiInputChange"
+        value="{{aiRawText}}"
+      />
+    </view>
+    <view class="field">
+      <view class="label">AI 入账模式</view>
+      <radio-group class="mode-group" bindchange="onAiModeChange">
+        <label class="mode-item" wx:for="{{aiEntryModeOptions}}" wx:key="value">
+          <radio value="{{item.value}}" checked="{{aiEntryMode === item.value}}" />
+          <text>{{item.label}}</text>
+        </label>
+      </radio-group>
+    </view>
+    <button class="secondary-button" loading="{{aiLoading}}" bindtap="onAiParse">AI 解析</button>
+    <button class="ghost-button" wx:if="{{aiDraft}}" bindtap="onApplyAiDraft">应用待确认草稿</button>
+    <view class="ai-result" wx:if="{{aiResult && aiResult.items && aiResult.items.length}}">
+      <view class="ai-line">解析到 {{aiResult.items.length}} 项动作：</view>
+      <view class="ai-line" wx:for="{{aiResult.items}}" wx:key="exerciseId">
+        {{exerciseNameMap[item.exerciseId] || item.exerciseId}}：{{item.sets}}组 / {{item.reps}}次（置信度 {{item.confidence}}）
+      </view>
+    </view>
+  </view>
+
+
   <view class="card" id="history-record-card" wx:if="{{hasActivePlan}}">
     <view class="card-title">补录历史训练（近7天）</view>
     <view wx:if="{{historyEditorVisible}}">
@@ -159,36 +190,6 @@
     <button class="secondary-button" loading="{{submitting || historyLoading}}" bindtap="onHistoryPrimaryAction">
       {{historyEditorVisible ? '提交' : '补录历史训练'}}
     </button>
-  </view>
-
-  <view class="card">
-    <view class="card-title">智能录入</view>
-    <view class="field">
-      <view class="label">训练描述</view>
-      <textarea
-        class="textarea"
-        placeholder="例如：举腿3组每组12次，深蹲2组每组20次"
-        bindinput="onAiInputChange"
-        value="{{aiRawText}}"
-      />
-    </view>
-    <view class="field">
-      <view class="label">AI 入账模式</view>
-      <radio-group class="mode-group" bindchange="onAiModeChange">
-        <label class="mode-item" wx:for="{{aiEntryModeOptions}}" wx:key="value">
-          <radio value="{{item.value}}" checked="{{aiEntryMode === item.value}}" />
-          <text>{{item.label}}</text>
-        </label>
-      </radio-group>
-    </view>
-    <button class="secondary-button" loading="{{aiLoading}}" bindtap="onAiParse">AI 解析</button>
-    <button class="ghost-button" wx:if="{{aiDraft}}" bindtap="onApplyAiDraft">应用待确认草稿</button>
-    <view class="ai-result" wx:if="{{aiResult && aiResult.items && aiResult.items.length}}">
-      <view class="ai-line">解析到 {{aiResult.items.length}} 项动作：</view>
-      <view class="ai-line" wx:for="{{aiResult.items}}" wx:key="exerciseId">
-        {{exerciseNameMap[item.exerciseId] || item.exerciseId}}：{{item.sets}}组 / {{item.reps}}次（置信度 {{item.confidence}}）
-      </view>
-    </view>
   </view>
 
   <view class="card">

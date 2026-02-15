@@ -73,6 +73,19 @@
     </view>
   </view>
 
+  <view class="contact-modal-mask" wx:if="{{showFeedbackModal}}" bindtap="onCloseFeedbackModal">
+    <view class="contact-modal-card" catchtap="noop">
+      <view class="card-title">问题反馈</view>
+      <view class="contact-tip">请描述你遇到的问题或建议（必填）。</view>
+      <textarea class="feedback-textarea" placeholder="例如：补录历史训练时，希望支持批量复制前一天数据..." maxlength="500" data-field="content" bindinput="onFeedbackInput" value="{{feedbackForm.content}}" />
+      <view class="contact-tip">联系方式（选填）</view>
+      <input class="ai-field-input" placeholder="微信号/手机号" data-field="contact" bindinput="onFeedbackInput" value="{{feedbackForm.contact}}" />
+      <view class="contact-tip">需要人工沟通可加微信：{{authorContact.wechatId}}</view>
+      <button class="secondary-button" bindtap="onCopyAuthorWechat">复制作者微信号</button>
+      <button class="secondary-button" loading="{{feedbackSubmitting}}" disabled="{{feedbackSubmitting}}" bindtap="onSubmitFeedback">提交反馈</button>
+      <button class="secondary-button" bindtap="onCloseFeedbackModal">关闭</button>
+    </view>
+  </view>
   <view class="ai-modal-mask" wx:if="{{showAiProfileModal}}" bindtap="onCloseAiProfileModal">
     <view class="ai-modal-card" catchtap="noop">
       <view class="card-title">个人训练基础资料</view>
@@ -122,3 +135,7 @@
     </view>
   </view>
 </view>
+
+
+
+

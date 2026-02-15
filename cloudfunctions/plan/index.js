@@ -1,4 +1,4 @@
-const cloud = require("wx-server-sdk");
+﻿const cloud = require("wx-server-sdk");
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV,
@@ -31,6 +31,49 @@ async function getCurrentPlan(openid) {
 
   const byActive = await db.collection("plans").where({ openid, active: true }).limit(1).get();
   return byActive.data[0] || null;
+}
+
+function toDateString(date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildTargets(startLevels, setsRange, exerciseIds) {
+  return exerciseIds.reduce((acc, id) => {
+    acc[id] = {
+      level: Number(startLevels?.[id]) || 1,
+      setsRange,
+    };
+    return acc;
+  }, {});
+}
+
+function deriveTemplateFromSchedules(scheduleType, schedules = []) {
+  if (!schedules.length) {
+    return null;
+  }
+  if (scheduleType === "week") {
+    const daysOfWeek = schedules
+      .map((item) => {
+        const date = new Date(`${item.date}T00:00:00`);
+        const day = date.getDay();
+        return day === 0 ? 7 : day;
+      })
+      .filter((item) => Number.isFinite(item));
+    return { daysOfWeek: Array.from(new Set(daysOfWeek)) };
+  }
+  if (scheduleType === "month") {
+    const daysOfMonth = schedules
+      .map((item) => {
+        const date = new Date(`${item.date}T00:00:00`);
+        return date.getDate();
+      })
+      .filter((item) => Number.isFinite(item));
+    return { daysOfMonth: Array.from(new Set(daysOfMonth)) };
+  }
+  return null;
 }
 
 async function upsertSchedules(openid, planId, schedules) {
@@ -108,6 +151,23 @@ exports.main = async (event, context) => {
 
   const now = db.serverDate();
   const planId = event?.planId || `plan_${Date.now()}`;
+  const scheduleType = event?.scheduleType || "week";
+
+  const schedules = Array.isArray(event?.schedules) ? event.schedules : [];
+  const templateFromSchedules = deriveTemplateFromSchedules(scheduleType, schedules);
+  const templateExercises = schedules[0]?.exercises || event?.exercises || [];
+  const templateTargets =
+    schedules[0]?.targets || buildTargets(event?.startLevels || {}, event?.setsRange || "", templateExercises);
+  const scheduleTemplate =
+    event?.scheduleTemplate ||
+    (scheduleType === "calendar"
+      ? null
+      : {
+          type: scheduleType,
+          ...templateFromSchedules,
+          exercises: templateExercises,
+          targets: templateTargets,
+        });
 
   const data = {
     openid,
@@ -118,7 +178,8 @@ exports.main = async (event, context) => {
     weeklySessions: Number(event?.weeklySessions) || 0,
     setsRange: event?.setsRange || "",
     exerciseScope: event?.exerciseScope || "six",
-    scheduleType: event?.scheduleType || "week",
+    scheduleType,
+    scheduleTemplate,
     status: "active",
     active: true,
     startLevels: event?.startLevels || {},
@@ -128,13 +189,17 @@ exports.main = async (event, context) => {
   };
 
   await db.collection("plans").add({ data });
-  const schedules = await upsertSchedules(openid, planId, event?.schedules || []);
+
+  let savedSchedules = [];
+  if (scheduleType === "calendar" && schedules.length) {
+    savedSchedules = await upsertSchedules(openid, planId, schedules);
+  }
 
   return {
     ok: true,
     data: {
       ...data,
-      schedules,
+      schedules: savedSchedules,
     },
   };
 };

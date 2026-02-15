@@ -53,24 +53,6 @@
   font-size: 24rpx;
 }
 
-.pills {
-  display: flex;
-  gap: 12rpx;
-}
-
-.pill {
-  padding: 10rpx 20rpx;
-  border-radius: 999rpx;
-  border: 1rpx solid rgba(88, 64, 30, 0.2);
-  font-size: 22rpx;
-  color: #5c5247;
-}
-
-.pill-active {
-  background: #1f1b17;
-  color: #f5eee6;
-}
-
 .hint {
   font-size: 22rpx;
   color: #7a6f63;
@@ -91,6 +73,21 @@
 
 .exercise-name {
   font-size: 24rpx;
+}
+
+.exercise-name.locked {
+  color: #9a8f82;
+}
+
+.lock-tag {
+  font-size: 20rpx;
+  color: #9a8f82;
+}
+
+.level-name {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #6b5f54;
 }
 
 .picker {
@@ -150,6 +147,44 @@
   color: #f5eee6;
 }
 
+.week-exercise {
+  margin-bottom: 16rpx;
+}
+
+.week-exercise-name {
+  font-size: 24rpx;
+  margin-bottom: 8rpx;
+}
+
+.week-exercise-name.locked {
+  color: #9a8f82;
+}
+
+.week-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.week-chip {
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid rgba(31, 27, 23, 0.16);
+  font-size: 20rpx;
+  color: #5c5247;
+}
+
+.week-chip.selected {
+  background: #1f1b17;
+  color: #f5eee6;
+  border-color: transparent;
+}
+
+.week-chip.disabled {
+  color: #b0a497;
+  border-color: rgba(176, 164, 151, 0.5);
+}
+
 .week-label {
   font-size: 22rpx;
 }
@@ -192,12 +227,6 @@
   line-height: 1;
 }
 
-.recommendation-row {
-  font-size: 24rpx;
-  color: #5d5348;
-  margin-bottom: 8rpx;
-}
-
 .method-block {
   margin-top: 16rpx;
   padding: 16rpx;
@@ -230,11 +259,8 @@
   color: #8a7c6e;
 }
 
-.actions {
+.schedule-actions {
   margin-top: 32rpx;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16rpx;
 }
 
 .primary-button {
@@ -245,10 +271,188 @@
   font-size: 28rpx;
 }
 
-.secondary-button {
+.ghost-button {
   width: 100%;
+  margin-top: 14rpx;
   border-radius: 18rpx;
-  background: rgba(180, 99, 44, 0.15);
+  border: 1rpx dashed rgba(88, 64, 30, 0.4);
   color: #5b4835;
+  background: transparent;
+  font-size: 26rpx;
+}
+
+/* Brand sync v2: black + orange */
+.page {
+  min-height: 100vh;
+  padding: 56rpx 34rpx 96rpx;
+  background: radial-gradient(circle at top right, #2a1a12 0%, #141414 42%, #0d0d0d 100%);
+  color: #f3efe8;
+  font-family: "Noto Sans SC", "PingFang SC", sans-serif;
+}
+
+.title {
+  font-size: 50rpx;
+  line-height: 1.1;
+  color: #fff8f0;
+}
+
+.subtitle {
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: #b8aea2;
+}
+
+.hero-card {
+  margin-top: 22rpx;
+  padding: 28rpx 28rpx 32rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(160deg, rgba(27, 27, 27, 0.96), rgba(16, 16, 16, 0.96));
+  border: 1rpx solid rgba(255, 106, 0, 0.36);
+  box-shadow: 0 18rpx 38rpx rgba(0, 0, 0, 0.35);
+}
+
+.hero-top {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44rpx;
+  padding: 0 18rpx;
+  border-radius: 12rpx;
+  background: rgba(255, 106, 0, 0.18);
+  border: 1rpx solid rgba(255, 106, 0, 0.42);
+  color: #ff8d3a;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.hero-stage {
+  color: #e6ddd2;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.hero-title {
+  margin-top: 16rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #fff8f0;
+}
+
+.hero-subtitle {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #cfc4b8;
+}
+
+.card {
+  margin-top: 22rpx;
+  padding: 28rpx 28rpx 32rpx;
+  border-radius: 24rpx;
+  background: rgba(22, 22, 22, 0.95);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14rpx 30rpx rgba(0, 0, 0, 0.28);
+}
+
+.section-title {
+  font-size: 30rpx;
+  line-height: 1.35;
+  margin-bottom: 16rpx;
+  color: #f2ede4;
+}
+
+.label,
+.hint,
+.method-empty,
+.level-name,
+.schedule-title,
+.week-chip,
+.week-exercise-name,
+.exercise-name,
+.lock-tag,
+.method-targets,
+.method-text {
+  color: #bcae9d;
+}
+
+.input,
+.picker,
+.method-block {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f2ede4;
+}
+
+.exercise {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.tabs {
+  gap: 10rpx;
+}
+
+.tab {
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #c7b9a9;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tab-active {
+  background: linear-gradient(90deg, #ff6a00, #ff8d3a);
+  color: #fff4ea;
+  border-color: transparent;
+}
+
+.week-chip.selected,
+.calendar-cell.selected {
+  background: linear-gradient(90deg, #ff6a00, #ff8d3a);
+  color: #fff4ea;
+  border-color: transparent;
+}
+
+.week-chip.disabled {
+  color: #8f8274;
+  border-color: rgba(143, 130, 116, 0.5);
+}
+
+.calendar-cell {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e6ddd2;
+}
+
+.method-block {
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+
+.method-title {
+  color: #f2ede4;
+}
+
+.schedule-actions {
+  margin-top: 22rpx;
+}
+
+.primary-button {
+  min-height: 84rpx;
+  line-height: 84rpx;
+  border-radius: 18rpx;
+  font-size: 28rpx;
+  background: linear-gradient(90deg, #ff6a00, #ffa24b);
+  color: #fff4ea;
+}
+
+.ghost-button {
+  min-height: 84rpx;
+  line-height: 84rpx;
+  border-radius: 18rpx;
+  border: 1rpx solid rgba(255, 106, 0, 0.32);
+  color: #ffe4cf;
+  background: rgba(255, 255, 255, 0.05);
   font-size: 26rpx;
 }

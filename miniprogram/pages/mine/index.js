@@ -1,4 +1,4 @@
-﻿const { callCloud } = require("../../services/api");
+const { callCloud } = require("../../services/api");
 const { convictStructure } = require("../../data/convict-structure");
 
 const MINE_PROFILE_CACHE_KEY = "keepfit:mine:profile";
@@ -9,6 +9,7 @@ const AI_WEEKLY_TRAINING_OPTIONS = ["1-2天", "3-4天", "5天及以上"];
 const AI_AGE_RANGE_OPTIONS = ["未填写", "18岁以下", "18-29岁", "30-39岁", "40岁及以上"];
 const AI_GENDER_OPTIONS = ["未填写", "男", "女", "其他", "不透露"];
 const AI_FATIGUE_OPTIONS = ["未填写", "低", "中", "高"];
+const FEEDBACK_LOCAL_KEY = "keepfit:feedback:local";
 const STAGE_TO_LEVEL = {
   初试身手: 1,
   渐入佳境: 2,
@@ -146,9 +147,11 @@ Page({
       { id: "history", title: "训练历史", desc: "查看完整训练历史", action: "goHistory" },
     ],
     supportEntries: [
-      { id: "ai", title: "训练基础资料", desc: "编辑个人训练基础资料（必填/选填）", action: "goAiProfile" },
-      { id: "data", title: "数据与隐私", desc: "导出/清理本地数据", action: "openDataPrivacy" },
-      { id: "version", title: "版本与更新说明", desc: "查看当前版本与本次更新", action: "showVersionNotes" },
+      { id: "ai", title: "\u8bad\u7ec3\u57fa\u7840\u8d44\u6599", desc: "\u7f16\u8f91\u4e2a\u4eba\u8bad\u7ec3\u57fa\u7840\u8d44\u6599\uff08\u5fc5\u586b/\u9009\u586b\uff09", action: "goAiProfile" },
+      { id: "data", title: "\u6570\u636e\u4e0e\u9690\u79c1", desc: "\u5bfc\u51fa/\u6e05\u7406\u672c\u5730\u6570\u636e", action: "openDataPrivacy" },
+      { id: "feedback", title: "\u95ee\u9898\u53cd\u9988", desc: "\u63d0\u4ea4\u95ee\u9898\u4e0e\u5efa\u8bae", action: "openFeedbackModal" },
+      { id: "library", title: "\u5f00\u59cb\u9605\u8bfb\u300a\u56da\u5f92\u5065\u8eab\u300b", desc: "\u8fdb\u5165\u8be5\u4e66\u76ee\u5f55\u5e76\u7ee7\u7eed\u9605\u8bfb", action: "goQiutuBook" },
+      { id: "version", title: "\u7248\u672c\u4e0e\u66f4\u65b0\u8bf4\u660e", desc: "\u67e5\u770b\u5f53\u524d\u7248\u672c\u4e0e\u672c\u6b21\u66f4\u65b0", action: "showVersionNotes" },
     ],
     aiProfileSummary: {
       requiredDone: false,
@@ -249,6 +252,10 @@ Page({
 
   goHistory() {
     wx.navigateTo({ url: "/pages/workout-history/index" });
+  },
+
+  goQiutuBook() {
+    wx.navigateTo({ url: "/pages/book-detail/index?bookId=qiutujianshen" });
   },
 
   goAiProfile() {
@@ -365,6 +372,77 @@ Page({
       return;
     }
     this[action]();
+  },
+
+
+  openFeedbackModal() {
+    this.setData({ showFeedbackModal: true });
+  },
+
+  onCloseFeedbackModal() {
+    this.setData({ showFeedbackModal: false });
+  },
+
+  onFeedbackInput(event) {
+    const field = event?.currentTarget?.dataset?.field;
+    if (!field) {
+      return;
+    }
+    this.setData({ [`feedbackForm.${field}`]: String(event?.detail?.value || "") });
+  },
+
+  onCopyAuthorWechat() {
+    wx.setClipboardData({
+      data: String(this.data.authorContact.wechatId || ""),
+      success: () => {
+        wx.showToast({ title: "??????", icon: "success" });
+      },
+    });
+  },
+
+  onSubmitFeedback() {
+    const content = String(this.data.feedbackForm.content || "").trim();
+    const contact = String(this.data.feedbackForm.contact || "").trim();
+    if (!content || content.length < 10) {
+      wx.showToast({ title: "?????10?????", icon: "none" });
+      return;
+    }
+
+    this.setData({ feedbackSubmitting: true });
+
+    callCloud("feedback", {
+      action: "submit",
+      content,
+      contact,
+      source: "mine-feedback-modal",
+    })
+      .then(() => {
+        this.setData({
+          showFeedbackModal: false,
+          feedbackForm: {
+            content: "",
+            contact: "",
+          },
+        });
+        wx.showToast({ title: "?????", icon: "success" });
+      })
+      .catch((error) => {
+        const localBackup = {
+          id: `F${Date.now()}`,
+          content,
+          contact,
+          createdAt: new Date().toISOString(),
+          source: "mine-feedback-modal",
+        };
+        const stored = wx.getStorageSync(FEEDBACK_LOCAL_KEY);
+        const list = Array.isArray(stored) ? stored.slice(0, 99) : [];
+        list.unshift(localBackup);
+        wx.setStorageSync(FEEDBACK_LOCAL_KEY, list);
+        wx.showToast({ title: error?.message || "??????", icon: "none" });
+      })
+      .finally(() => {
+        this.setData({ feedbackSubmitting: false });
+      });
   },
 
   openDataPrivacy() {

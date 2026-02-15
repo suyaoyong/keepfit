@@ -11,11 +11,113 @@ const EXERCISE_SCOPE = {
   six: ["push", "leg", "pull", "squat", "bridge", "hand"],
 };
 
+function toInt(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor(parsed));
+}
+
+function sanitizeRepsPerSet(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.map((item) => toInt(item)).filter((item) => item > 0);
+}
+
+function buildRepsPerSet(sets, reps, rawRepsPerSet) {
+  const direct = sanitizeRepsPerSet(rawRepsPerSet);
+  if (direct.length) {
+    return direct;
+  }
+  const safeSets = toInt(sets);
+  const safeReps = toInt(reps);
+  if (!safeSets || !safeReps) {
+    return [];
+  }
+  return Array.from({ length: safeSets }, () => safeReps);
+}
+
+function normalizeWorkoutRecord(record = {}) {
+  const setsFromRecord = toInt(record.sets);
+  const repsPerSet = buildRepsPerSet(record.sets, record.reps, record.repsPerSet);
+  const normalizedSets = setsFromRecord || repsPerSet.length;
+  const normalizedRepsPerSet = repsPerSet.slice(0, normalizedSets || repsPerSet.length);
+  const finalSets = normalizedSets || normalizedRepsPerSet.length;
+
+  return {
+    ...record,
+    sets: finalSets,
+    repsPerSet: normalizedRepsPerSet,
+  };
+}
+
+function normalizeLogInput(event = {}) {
+  const sets = toInt(event.sets);
+  const repsPerSet = buildRepsPerSet(event.sets, event.reps, event.repsPerSet);
+  const resolvedSets = sets || repsPerSet.length;
+  if (!resolvedSets || !repsPerSet.length) {
+    return null;
+  }
+
+  return {
+    sets: resolvedSets,
+    repsPerSet: repsPerSet.slice(0, resolvedSets),
+  };
+}
+
+function mergeWorkoutRecords(existing = {}, incoming = {}) {
+  const current = normalizeWorkoutRecord(existing);
+  const next = normalizeWorkoutRecord(incoming);
+  const mergedRepsPerSet = current.repsPerSet.concat(next.repsPerSet);
+
+  return {
+    ...current,
+    ...next,
+    planId: next.planId || current.planId || "",
+    workoutId: current.workoutId || next.workoutId,
+    exerciseName: next.exerciseName || current.exerciseName || "",
+    sets: current.sets + next.sets,
+    repsPerSet: mergedRepsPerSet,
+  };
+}
+
 function toDateString(date = new Date()) {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function dayOfWeek(dateString) {
+  const date = new Date(`${dateString}T00:00:00`);
+  const day = date.getDay();
+  return day === 0 ? 7 : day;
+}
+
+function dayOfMonth(dateString) {
+  const date = new Date(`${dateString}T00:00:00`);
+  return date.getDate();
+}
+
+function normalizeStatus(status) {
+  return String(status || "").trim().toLowerCase();
+}
+
+function isRestStatus(status) {
+  const normalized = normalizeStatus(status);
+  return normalized === "rest" || normalized === "rested" || normalized === "休息";
+}
+
+function resolveDayStatus({ hasWorkout, hasDiary, scheduleStatus }) {
+  if (hasWorkout || hasDiary) {
+    return "trained";
+  }
+  if (isRestStatus(scheduleStatus)) {
+    return "rest";
+  }
+  return "none";
 }
 
 async function getActivePlan(openid) {
@@ -78,6 +180,40 @@ function buildFallbackTargets(plan, exerciseIds) {
   }, {});
 }
 
+function getExercisesForDate(plan, date) {
+  const template = plan?.scheduleTemplate || null;
+  if (!template) {
+    return [];
+  }
+  if (template.exerciseSchedules && plan.scheduleType === "week") {
+    const weekday = dayOfWeek(date);
+    return Object.keys(template.exerciseSchedules).filter((exerciseId) => {
+      const days = template.exerciseSchedules[exerciseId]?.daysOfWeek || [];
+      return days.includes(weekday);
+    });
+  }
+  if (template.exerciseSchedules && plan.scheduleType === "month") {
+    const day = dayOfMonth(date);
+    return Object.keys(template.exerciseSchedules).filter((exerciseId) => {
+      const days = template.exerciseSchedules[exerciseId]?.daysOfMonth || [];
+      return days.includes(day);
+    });
+  }
+  if (plan.scheduleType === "week") {
+    const weekday = dayOfWeek(date);
+    return Array.isArray(template.daysOfWeek) && template.daysOfWeek.includes(weekday)
+      ? template.exercises || []
+      : [];
+  }
+  if (plan.scheduleType === "month") {
+    const day = dayOfMonth(date);
+    return Array.isArray(template.daysOfMonth) && template.daysOfMonth.includes(day)
+      ? template.exercises || []
+      : [];
+  }
+  return [];
+}
+
 async function handleToday(openid, event) {
   const date = event?.date || toDateString();
   const plan = await getActivePlan(openid);
@@ -90,11 +226,23 @@ async function handleToday(openid, event) {
     return { ok: true, data: existing };
   }
 
-  const exerciseIds = EXERCISE_SCOPE[plan.exerciseScope] || EXERCISE_SCOPE.six;
-  const targets = buildFallbackTargets(plan, exerciseIds);
+  if (plan.scheduleType === "calendar") {
+    return { ok: true, data: null };
+  }
+
+  const exerciseIds = getExercisesForDate(plan, date);
+  if (!exerciseIds.length) {
+    return { ok: true, data: null };
+  }
+  const exerciseList =
+    exerciseIds && exerciseIds.length
+      ? exerciseIds
+      : EXERCISE_SCOPE[plan.exerciseScope] || EXERCISE_SCOPE.six;
+  const targets = plan?.scheduleTemplate?.targets || buildFallbackTargets(plan, exerciseIds);
+
   const schedule = await upsertSchedule(openid, plan.planId, date, {
-    exercises: exerciseIds,
-    targets,
+    exercises: exerciseList,
+    targets: targets || buildFallbackTargets(plan, exerciseList),
     status: "planned",
     generated: true,
   });
@@ -141,24 +289,22 @@ async function handleLog(event, openid) {
   const now = db.serverDate();
   const planId = event?.planId || "";
   const workoutId = event?.workoutId || `workout_${Date.now()}`;
+  const normalizedInput = normalizeLogInput(event);
+  if (!normalizedInput) {
+    return { ok: false, error: "至少填写组数与每组次数" };
+  }
 
-  const record = {
+  const baseRecord = {
     openid,
     date,
     planId,
     workoutId,
     exerciseId,
-    sets: Number(event?.sets) || 0,
-    reps: Number(event?.reps) || 0,
-    duration: Number(event?.duration) || 0,
-    rpe: Number(event?.rpe) || 0,
-    notes: event?.notes || "",
+    exerciseName: event?.exerciseName || "",
+    sets: normalizedInput.sets,
+    repsPerSet: normalizedInput.repsPerSet,
     updatedAt: now,
   };
-
-  if (!record.sets && !record.reps && !record.duration) {
-    return { ok: false, error: "至少填写组数/次数/时长之一" };
-  }
 
   const existing = await db
     .collection("workouts")
@@ -166,14 +312,16 @@ async function handleLog(event, openid) {
     .limit(1)
     .get();
 
+  let mergedRecord = baseRecord;
   if (existing.data.length) {
+    mergedRecord = mergeWorkoutRecords(existing.data[0], baseRecord);
     await db.collection("workouts").doc(existing.data[0]._id).update({
-      data: record,
+      data: mergedRecord,
     });
   } else {
     await db.collection("workouts").add({
       data: {
-        ...record,
+        ...mergedRecord,
         createdAt: now,
       },
     });
@@ -187,7 +335,7 @@ async function handleLog(event, openid) {
   }
 
   const progress = await updateProgress(openid, exerciseId);
-  return { ok: true, data: { ...record, progress } };
+  return { ok: true, data: { ...mergedRecord, progress } };
 }
 
 async function handleHistory(openid) {
@@ -198,7 +346,151 @@ async function handleHistory(openid) {
     .limit(50)
     .get();
 
-  return { ok: true, data: result.data };
+  const normalized = result.data.map((item) => {
+    const normalizedItem = normalizeWorkoutRecord(item);
+    return {
+      _id: normalizedItem._id,
+      workoutId: normalizedItem.workoutId,
+      date: normalizedItem.date,
+      exerciseId: normalizedItem.exerciseId,
+      exerciseName: normalizedItem.exerciseName || "",
+      sets: normalizedItem.sets,
+      repsPerSet: normalizedItem.repsPerSet,
+      createdAt: normalizedItem.createdAt || null,
+      updatedAt: normalizedItem.updatedAt || null,
+    };
+  });
+
+  return { ok: true, data: normalized };
+}
+
+async function handleHistoryRange(openid, event) {
+  const dateFrom = String(event?.dateFrom || "").trim();
+  const dateTo = String(event?.dateTo || "").trim();
+  if (!dateFrom || !dateTo) {
+    return { ok: false, error: "缺少日期范围" };
+  }
+
+  const result = await db
+    .collection("workouts")
+    .where({ openid, date: _.gte(dateFrom).and(_.lte(dateTo)) })
+    .orderBy("date", "desc")
+    .limit(500)
+    .get();
+
+  const normalized = result.data.map((item) => {
+    const normalizedItem = normalizeWorkoutRecord(item);
+    return {
+      _id: normalizedItem._id,
+      workoutId: normalizedItem.workoutId,
+      date: normalizedItem.date,
+      exerciseId: normalizedItem.exerciseId,
+      exerciseName: normalizedItem.exerciseName || "",
+      sets: normalizedItem.sets,
+      repsPerSet: normalizedItem.repsPerSet,
+      createdAt: normalizedItem.createdAt || null,
+      updatedAt: normalizedItem.updatedAt || null,
+    };
+  });
+
+  return { ok: true, data: normalized };
+}
+
+async function findWorkoutForDelete(openid, event = {}) {
+  const docId = event?._id || event?.recordId || "";
+  if (docId) {
+    try {
+      const docResult = await db.collection("workouts").doc(docId).get();
+      const record = docResult?.data || null;
+      if (!record || record.openid !== openid) {
+        return null;
+      }
+      return record;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  const date = event?.date || "";
+  const exerciseId = event?.exerciseId || "";
+  const workoutId = event?.workoutId || "";
+
+  const condition = { openid };
+  if (date) {
+    condition.date = date;
+  }
+  if (exerciseId) {
+    condition.exerciseId = exerciseId;
+  }
+  if (workoutId) {
+    condition.workoutId = workoutId;
+  }
+
+  const result = await db
+    .collection("workouts")
+    .where(condition)
+    .orderBy("updatedAt", "desc")
+    .limit(1)
+    .get();
+  return result.data[0] || null;
+}
+
+async function getScheduleForRollback(openid, date, planId) {
+  if (!date) {
+    return null;
+  }
+  if (planId) {
+    const linked = await getScheduleForDate(openid, planId, date);
+    if (linked) {
+      return linked;
+    }
+  }
+  const result = await db.collection("schedules").where({ openid, date }).limit(1).get();
+  return result.data[0] || null;
+}
+
+async function handleDelete(event, openid) {
+  const target = await findWorkoutForDelete(openid, event);
+  if (!target?._id) {
+    return { ok: false, error: "未找到可删除的训练记录" };
+  }
+
+  await db.collection("workouts").doc(target._id).remove();
+
+  const affectedDate = target.date || event?.date || "";
+  if (!affectedDate) {
+    return { ok: true, data: { deletedId: target._id } };
+  }
+
+  const [remainingWorkoutResult, diaryResult, schedule] = await Promise.all([
+    db.collection("workouts").where({ openid, date: affectedDate }).limit(1).get(),
+    db.collection("diaries").where({ openid, date: affectedDate }).limit(1).get(),
+    getScheduleForRollback(openid, affectedDate, target.planId || event?.planId || ""),
+  ]);
+
+  const hasWorkout = remainingWorkoutResult.data.length > 0;
+  const hasDiary = diaryResult.data.length > 0;
+  let scheduleStatus = schedule?.status || "";
+
+  // T074: 删除当日最后一条训练记录后，按“休息优先，否则无训练”回退。
+  if (!hasWorkout && schedule && !isRestStatus(scheduleStatus)) {
+    scheduleStatus = "planned";
+    await db.collection("schedules").doc(schedule._id).update({
+      data: { status: scheduleStatus, updatedAt: db.serverDate() },
+    });
+  }
+
+  return {
+    ok: true,
+    data: {
+      deletedId: target._id,
+      date: affectedDate,
+      status: resolveDayStatus({ hasWorkout, hasDiary, scheduleStatus }),
+      hasWorkout,
+      hasDiary,
+      scheduleStatus: scheduleStatus || null,
+    },
+  };
 }
 
 exports.main = async (event, context) => {
@@ -218,6 +510,12 @@ exports.main = async (event, context) => {
   }
   if (action === "history") {
     return handleHistory(openid);
+  }
+  if (action === "historyRange") {
+    return handleHistoryRange(openid, event);
+  }
+  if (action === "delete") {
+    return handleDelete(event, openid);
   }
 
   return { ok: false, error: "不支持的操作" };

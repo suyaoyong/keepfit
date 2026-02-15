@@ -1,24 +1,36 @@
-<view class="page">
-  <view class="page-title">训练历史</view>
-  <view class="page-desc">查看最近的训练记录。</view>
-
-  <view class="empty" wx:if="{{loading}}">
-    <view class="empty-text">正在加载训练记录…</view>
+﻿<view class="page">
+  <view class="header">
+    <view class="title">训练历史</view>
+    <view class="subtitle">按天汇总，快速复盘训练完成情况</view>
   </view>
 
-  <view class="empty" wx:elif="{{errorMessage}}">
+  <view class="hero-card">
+    <view class="hero-top">
+      <view class="hero-badge">历史证据链</view>
+      <view class="hero-stage">训练 -> 进度 -> 历史</view>
+    </view>
+    <view class="hero-title">每一次训练都有记录</view>
+    <view class="hero-subtitle">按日期查看动作、组数与补录内容。</view>
+  </view>
+
+  <view class="card empty" wx:if="{{loading}}">
+    <view class="empty-text">正在加载训练记录...</view>
+  </view>
+
+  <view class="card empty" wx:elif="{{errorMessage}}">
     <view class="empty-text">{{errorMessage}}</view>
     <button class="secondary-button" bindtap="loadHistory">重试加载</button>
   </view>
 
-  <view class="section" wx:elif="{{records.length}}">
-    <view class="record" wx:for="{{records}}" wx:key="_id">
-      <view class="record-title">{{item.date}} · {{item.exerciseName || item.exerciseId}}</view>
-      <view class="record-meta">组数 {{item.sets}} · 次数 {{item.reps}} · 时长 {{item.duration}} 分钟 · RPE {{item.rpe}}</view>
+  <view class="card" wx:elif="{{records.length}}">
+    <view class="card-title">最近记录</view>
+    <view class="record" wx:for="{{records}}" wx:key="date">
+      <view class="record-title">{{item.date}} · 共{{item.count}}项</view>
+      <view class="record-meta">{{item.summaryText || '-'}}</view>
     </view>
   </view>
 
-  <view class="empty" wx:else>
+  <view class="card empty" wx:else>
     <view class="empty-text">暂无训练记录</view>
   </view>
 </view>

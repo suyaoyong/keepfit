@@ -1,0 +1,33 @@
+<view class="page">
+  <view class="header">
+    <view class="title">阅读书库</view>
+    <view class="subtitle">云端书籍目录与阅读进度</view>
+  </view>
+
+  <view class="card empty" wx:if="{{loading}}">
+    <view class="empty-text">正在加载书库...</view>
+  </view>
+
+  <view class="card empty" wx:elif="{{errorMessage}}">
+    <view class="empty-text">{{errorMessage}}</view>
+    <button class="secondary-button" bindtap="loadBooks">重试</button>
+  </view>
+
+  <view class="card empty" wx:elif="{{!books.length}}">
+    <view class="empty-text">书库为空，请先导入书籍数据。</view>
+  </view>
+
+  <view class="card" wx:else>
+    <view class="card-title">已上架书籍</view>
+    <view class="book-row" wx:for="{{books}}" wx:key="bookId" data-book-id="{{item.bookId}}" bindtap="onOpenBook">
+      <image class="book-cover" wx:if="{{item.coverUrl}}" src="{{item.coverUrl}}" mode="aspectFill" />
+      <view class="book-cover placeholder" wx:else>书</view>
+      <view class="book-main">
+        <view class="book-title">{{item.title}}</view>
+        <view class="book-meta">{{item.author || '未知作者'}} · {{item.chapterCount || 0}} 章</view>
+        <view class="book-intro">{{item.intro || '暂无简介'}}</view>
+      </view>
+      <view class="book-arrow">></view>
+    </view>
+  </view>
+</view>

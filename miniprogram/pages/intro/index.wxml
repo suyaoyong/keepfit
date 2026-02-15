@@ -2,7 +2,7 @@
   <view class="hero">
     <view class="badge">囚徒健身 · 训练计划</view>
     <view class="title">KeepFit</view>
-    <view class="subtitle">从基础到登峰造极，六艺进阶，一步一关。</view>
+    <view class="subtitle">囚徒健身，不靠器械的长期进阶；从基础到登峰，一步一式。</view>
     <view class="hero-stats">
       <view class="stat">
         <view class="stat-value">6</view>
@@ -27,7 +27,7 @@
     <view class="panel-title">你将获得</view>
     <view class="panel-item">自动生成今日训练目标</view>
     <view class="panel-item">六大动作阶段化进度</view>
-    <view class="panel-item">训练日记与临时加练</view>
+    <view class="panel-item">训练日记与历史补录</view>
     <view class="panel-item">云端可维护的训练方法</view>
   </view>
 

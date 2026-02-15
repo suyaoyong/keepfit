@@ -1,4 +1,4 @@
-const DEFAULT_ENV = "keepfit-1gddbzyaad583ad3";
+﻿const DEFAULT_ENV = "keepfit-1gddbzyaad583ad3";
 const OPENID_CACHE_KEY = "keepfit:openid";
 
 let cachedOpenId = null;
@@ -54,6 +54,7 @@ function normalizeError(res) {
   const message = res?.result?.error || "云函数调用失败";
   const err = new Error(message);
   err.detail = res?.result;
+  err.errCode = res?.result?.code || res?.result?.errCode || res?.errCode || "";
   return err;
 }
 
@@ -77,9 +78,22 @@ async function callCloud(name, data = {}) {
   return res.result.data ?? res.result;
 }
 
+async function getAuthProfile() {
+  try {
+    const profile = await callCloud("auth", { action: "profile" });
+    return profile && typeof profile === "object"
+      ? profile
+      : { status: "guest", nickName: "未登录", avatarUrl: "" };
+  } catch (error) {
+    return { status: "guest", nickName: "未登录", avatarUrl: "" };
+  }
+}
+
 module.exports = {
   callCloud,
+  ensureCloudInit,
   getOpenId,
+  getAuthProfile,
   getTodayWorkout: async () => callCloud("workout", { action: "today" }),
   getSchedules: async (payload = {}) => callCloud("schedule", { action: "get", ...payload }),
   swapSchedule: async (payload = {}) => callCloud("schedule", { action: "swap", ...payload }),

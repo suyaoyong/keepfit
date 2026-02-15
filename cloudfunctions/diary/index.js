@@ -1,10 +1,11 @@
-const cloud = require("wx-server-sdk");
+﻿const cloud = require("wx-server-sdk");
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV,
 });
 
 const db = cloud.database();
+const KNOWN_EXERCISE_IDS = ["push", "squat", "pull", "leg", "bridge", "hand"];
 
 function toDateString(date = new Date()) {
   const year = date.getFullYear();
@@ -70,9 +71,10 @@ async function handleLog(openid, event) {
   }
 
   await db.collection("diaries").add({ data: record });
-  const progress = await updateProgress(openid, exerciseId);
+  const shouldUpdateProgress = KNOWN_EXERCISE_IDS.includes(exerciseId);
+  const progress = shouldUpdateProgress ? await updateProgress(openid, exerciseId) : null;
 
-  return { ok: true, data: { ...record, progress } };
+  return { ok: true, data: { ...record, progress: progress || undefined } };
 }
 
 async function handleHistory(openid, event) {
@@ -84,6 +86,52 @@ async function handleHistory(openid, event) {
     .limit(limit)
     .get();
 
+  return { ok: true, data: result.data };
+}
+
+async function handleLogOther(openid, event) {
+  const date = event?.date || toDateString();
+  const activityName = String(event?.activityName || "").trim();
+  const duration = Number(event?.duration) || 0;
+  const notes = String(event?.notes || "").trim();
+
+  if (!activityName) {
+    return { ok: false, error: "缺少其他训练项目名称" };
+  }
+  if (!duration || duration <= 0) {
+    return { ok: false, error: "其他训练时长需大于0" };
+  }
+
+  const now = db.serverDate();
+  const diaryId = event?.diaryId || `diary_other_${Date.now()}`;
+  const record = {
+    diaryId,
+    openid,
+    date,
+    recordType: "other",
+    activityName,
+    duration: Math.floor(duration),
+    notes,
+    createdAt: now,
+  };
+
+  await db.collection("diaries").add({ data: record });
+  return { ok: true, data: record };
+}
+
+async function handleHistoryRange(openid, event) {
+  const dateFrom = String(event?.dateFrom || "").trim();
+  const dateTo = String(event?.dateTo || "").trim();
+  if (!dateFrom || !dateTo) {
+    return { ok: false, error: "缺少日期范围" };
+  }
+
+  const result = await db
+    .collection("diaries")
+    .where({ openid, date: db.command.gte(dateFrom).and(db.command.lte(dateTo)) })
+    .orderBy("date", "desc")
+    .limit(500)
+    .get();
   return { ok: true, data: result.data };
 }
 
@@ -101,6 +149,12 @@ exports.main = async (event, context) => {
   }
   if (action === "history") {
     return handleHistory(openid, event);
+  }
+  if (action === "logOther") {
+    return handleLogOther(openid, event);
+  }
+  if (action === "historyRange") {
+    return handleHistoryRange(openid, event);
   }
 
   return { ok: false, error: "不支持的操作" };

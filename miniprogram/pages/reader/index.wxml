@@ -1,0 +1,26 @@
+<view class="page">
+  <view class="header">
+    <view class="title">{{bookTitle || '阅读中'}}</view>
+    <view class="subtitle">{{chapterTitle || ('第' + chapterNo + '章')}}</view>
+  </view>
+
+  <view class="card empty" wx:if="{{loading}}">
+    <view class="empty-text">正在加载章节...</view>
+  </view>
+
+  <view class="card empty" wx:elif="{{errorMessage}}">
+    <view class="empty-text">{{errorMessage}}</view>
+    <button class="secondary-button" bindtap="loadChapter">重试</button>
+  </view>
+
+  <scroll-view wx:else class="reader-scroll" scroll-y="true" scroll-top="{{scrollTopView}}" bindscroll="onReaderScroll">
+    <view class="reader-card">
+      <rich-text nodes="{{contentHtml}}"></rich-text>
+    </view>
+  </scroll-view>
+
+  <view class="reader-actions">
+    <button class="secondary-button" bindtap="onPrevChapter" disabled="{{chapterNo <= 1}}">上一章</button>
+    <button class="secondary-button" bindtap="onNextChapter">下一章</button>
+  </view>
+</view>

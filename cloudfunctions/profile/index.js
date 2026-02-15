@@ -17,10 +17,6 @@ exports.main = async (event, context) => {
   }
 
   if (action === "set") {
-    if (!profile.abilityLevel || !profile.trainingFrequency || !profile.sessionDuration) {
-      return { ok: false, error: "训练基础信息不完整" };
-    }
-
     const now = db.serverDate();
     const data = {
       openid,

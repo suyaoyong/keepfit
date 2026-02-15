@@ -253,3 +253,57 @@
   border-radius: 18rpx;
   font-size: 26rpx;
 }
+
+.contact-modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 42;
+  background: rgba(17, 12, 8, 0.52);
+  display: flex;
+  align-items: flex-end;
+}
+
+.contact-modal-card {
+  width: 100%;
+  background: #171717;
+  border-top: 1rpx solid rgba(255, 106, 0, 0.35);
+  border-radius: 26rpx 26rpx 0 0;
+  padding: 30rpx 30rpx calc(30rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -16rpx 40rpx rgba(0, 0, 0, 0.35);
+}
+
+.contact-line {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #f2ede4;
+}
+
+.contact-tip {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #bcae9d;
+  line-height: 1.5;
+}
+
+.contact-qrcode {
+  margin-top: 14rpx;
+  width: 360rpx;
+  max-width: 100%;
+  border-radius: 12rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+  background: #fff;
+}
+
+
+.feedback-textarea {
+  margin-top: 10rpx;
+  width: 100%;
+  min-height: 180rpx;
+  padding: 14rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 24rpx;
+  color: #f2ede4;
+  box-sizing: border-box;
+}

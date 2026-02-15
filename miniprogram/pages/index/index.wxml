@@ -1,10 +1,1 @@
-<view class="page">
-  <view class="page-title">KeepFit</view>
-  <view class="page-desc">开始你的囚徒健身训练计划。</view>
-
-  <view class="card" wx:if="{{!hasPlan}}">
-    <view class="card-title">还没有训练计划</view>
-    <view class="card-desc">先填写训练基础信息并选择起始等级。</view>
-    <button class="primary-button" bindtap="onGoPlanSetup">去设置计划</button>
-  </view>
-</view>
+<view class="redirect-placeholder"></view>

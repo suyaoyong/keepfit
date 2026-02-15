@@ -1,12 +1,16 @@
 {
   "pages": [
+    "pages/workout-today/index",
     "pages/intro/index",
     "pages/login/index",
-    "pages/index/index",
     "pages/plan-setup/index",
-    "pages/workout-today/index",
     "pages/progress/index",
+    "pages/mine/index",
     "pages/workout-history/index",
+    "pages/library/index",
+    "pages/book-detail/index",
+    "pages/reader/index",
+    "pages/index/index",
     "pages/example/index"
   ],
   "window": {
@@ -33,6 +37,12 @@
         "text": "进度",
         "iconPath": "images/icons/usercenter.png",
         "selectedIconPath": "images/icons/usercenter-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "images/icons/usercenter.png",
+        "selectedIconPath": "images/icons/usercenter-active.png"
       }
     ]
   },
@@ -40,3 +50,4 @@
   "style": "v2",
   "lazyCodeLoading": "requiredComponents"
 }
+

@@ -1,4 +1,4 @@
-const EXERCISES = [
+﻿const EXERCISES = [
   { id: "push", name: "俯卧撑" },
   { id: "squat", name: "深蹲" },
   { id: "pull", name: "引体向上" },
@@ -10,7 +10,7 @@ const EXERCISES = [
 function makeDefaultSteps() {
   return Array.from({ length: 10 }, (_, idx) => ({
     level: idx + 1,
-    levelName: `第 ${idx + 1} 式`,
+    levelName: `第${idx + 1}式`,
   }));
 }
 

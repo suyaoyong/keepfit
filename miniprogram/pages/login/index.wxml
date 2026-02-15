@@ -1,7 +1,7 @@
 <view class="page">
   <view class="header">
     <view class="title">登录</view>
-    <view class="subtitle">获取微信授权，用于同步训练计划与进度。</view>
+    <view class="subtitle">登录后开启囚徒健身专属训练档案，用于同步六艺进阶记录。</view>
   </view>
 
   <view class="card">
