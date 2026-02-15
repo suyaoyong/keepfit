@@ -1,6 +1,6 @@
 <view class="page">
   <view class="header">
-    <view class="title">{{bookTitle || '阅读中'}}</view>
+    <view class="title">{{bookTitle || '阅读'}}</view>
     <view class="subtitle">{{chapterTitle || ('第' + chapterNo + '章')}}</view>
   </view>
 
@@ -15,7 +15,15 @@
 
   <scroll-view wx:else class="reader-scroll" scroll-y="true" scroll-top="{{scrollTopView}}" bindscroll="onReaderScroll">
     <view class="reader-card">
-      <rich-text nodes="{{contentHtml}}"></rich-text>
+      <block wx:for="{{contentBlocks}}" wx:key="index">
+        <view wx:if="{{item.type === 'text'}}" class="reader-block-text">
+          <rich-text nodes="{{item.html}}"></rich-text>
+        </view>
+        <view wx:elif="{{item.type === 'image'}}" class="reader-block-image">
+          <image class="reader-image" src="{{item.src}}" mode="widthFix" data-src="{{item.src}}" bindtap="onPreviewImage" />
+          <view class="reader-image-tip">点击图片可放大预览</view>
+        </view>
+      </block>
     </view>
   </scroll-view>
 
