@@ -1,0 +1,124 @@
+﻿<view class="page">
+  <view class="header">
+    <view class="title">我的</view>
+    <view class="subtitle">身份档案与核心入口</view>
+  </view>
+
+  <view class="hero-card">
+    <view class="hero-top">
+      <view class="hero-badge">{{identityLevelText}}</view>
+      <view class="hero-stage">{{identityStageName}}</view>
+    </view>
+    <view class="hero-user-row">
+      <view class="avatar-wrap">
+        <image class="avatar" wx:if="{{profile.avatarUrl}}" src="{{profile.avatarUrl}}" mode="aspectFill" />
+        <view class="avatar placeholder" wx:else>我</view>
+      </view>
+      <view class="user-meta">
+        <view class="user-name">{{profile.nickName}}</view>
+        <view class="user-status">账号状态：{{profile.status}}</view>
+      </view>
+    </view>
+    <view class="hero-summary">你是：{{identityLevelText}}，持续训练保持升级节奏。</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">计划快照</view>
+    <view wx:if="{{planSnapshot.loaded && planSnapshot.hasPlan}}">
+      <view class="snapshot-line">计划名称：{{planSnapshot.planName}}</view>
+      <view class="snapshot-line">当前阶段：{{planSnapshot.stageName}}</view>
+      <view class="snapshot-line">排期类型：{{planSnapshot.scheduleType}}</view>
+      <view class="snapshot-line">每周频率：{{planSnapshot.weeklySessions}} 次</view>
+    </view>
+    <view class="entry-desc" wx:else>暂无激活计划，点击“计划设置”创建。</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">个人训练基础资料</view>
+    <view class="snapshot-line">{{aiProfileSummary.requiredText}}</view>
+    <view class="snapshot-line">{{aiProfileSummary.optionalText}}</view>
+    <view class="entry-desc">训练目标固定为：体能提升。</view>
+    <button class="secondary-button" bindtap="goAiProfile">编辑训练基础资料</button>
+  </view>
+
+  <view class="card ethos-card">
+    <view class="card-title">囚徒健身体系统</view>
+    <view class="ethos-line">核心路径：初试身手 -> 渐入佳境 -> 炉火纯青 -> 闭关修炼</view>
+    <view class="ethos-line">核心原则：稳定记录、循序推进、长期执行</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">训练入口</view>
+    <view class="entry-list">
+      <view class="entry-row" wx:for="{{coreEntries}}" wx:key="id" data-action="{{item.action}}" bindtap="onTapCoreEntry">
+        <view class="entry-main">
+          <view class="entry-title">{{item.title}}</view>
+          <view class="entry-desc">{{item.desc}}</view>
+        </view>
+        <view class="entry-arrow">></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">数据与设置</view>
+    <view class="entry-list">
+      <view class="entry-row" wx:for="{{supportEntries}}" wx:key="id" data-action="{{item.action}}" bindtap="onTapSupportEntry">
+        <view class="entry-main">
+          <view class="entry-title">{{item.title}}</view>
+          <view class="entry-desc">{{item.desc}}</view>
+        </view>
+        <view class="entry-arrow">></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="ai-modal-mask" wx:if="{{showAiProfileModal}}" bindtap="onCloseAiProfileModal">
+    <view class="ai-modal-card" catchtap="noop">
+      <view class="card-title">个人训练基础资料</view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">身高(cm) *</view>
+        <input class="ai-field-input" type="digit" placeholder="例如 175" value="{{aiProfile.heightCm}}" data-field="heightCm" bindinput="onAiProfileInput" />
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">体重(kg) *</view>
+        <input class="ai-field-input" type="digit" placeholder="例如 68" value="{{aiProfile.weightKg}}" data-field="weightKg" bindinput="onAiProfileInput" />
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">每周可训练天数 *</view>
+        <picker mode="selector" range="{{aiWeeklyTrainingOptions}}" data-field="weeklyTrainingDays" bindchange="onAiProfilePickerChange">
+          <view class="ai-picker-value">{{aiProfile.weeklyTrainingDays || '请选择'}}</view>
+        </picker>
+      </view>
+
+      <view class="ai-field-row">
+        <view class="ai-field-label">年龄段</view>
+        <picker mode="selector" range="{{aiAgeRangeOptions}}" data-field="ageRange" bindchange="onAiProfilePickerChange">
+          <view class="ai-picker-value">{{aiProfile.ageRange || '未填写'}}</view>
+        </picker>
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">性别</view>
+        <picker mode="selector" range="{{aiGenderOptions}}" data-field="gender" bindchange="onAiProfilePickerChange">
+          <view class="ai-picker-value">{{aiProfile.gender || '未填写'}}</view>
+        </picker>
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">伤痛或禁忌部位</view>
+        <input class="ai-field-input" placeholder="例如 膝盖不适" value="{{aiProfile.injuryNotes}}" data-field="injuryNotes" bindinput="onAiProfileInput" />
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">本周主观疲劳</view>
+        <picker mode="selector" range="{{aiFatigueOptions}}" data-field="fatigueLevel" bindchange="onAiProfilePickerChange">
+          <view class="ai-picker-value">{{aiProfile.fatigueLevel || '未填写'}}</view>
+        </picker>
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">其他训练偏好</view>
+        <input class="ai-field-input" placeholder="例如 慢跑/游泳" value="{{aiProfile.trainingPreference}}" data-field="trainingPreference" bindinput="onAiProfileInput" />
+      </view>
+      <button class="secondary-button" bindtap="onSaveAiProfile">保存资料</button>
+      <button class="secondary-button" bindtap="onCloseAiProfileModal">取消</button>
+    </view>
+  </view>
+</view>

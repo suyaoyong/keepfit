@@ -1,7 +1,7 @@
-<view class="page">
+﻿<view class="page">
   <view class="header">
     <view class="title">进度</view>
-    <view class="subtitle">六大动作的阶段分布</view>
+    <view class="subtitle">月历查看训练发生情况</view>
   </view>
 
   <view class="card empty" wx:if="{{!hasPlan}}">
@@ -11,19 +11,197 @@
   </view>
 
   <view wx:else>
-    <view class="grid">
-      <view class="progress-card" wx:for="{{progressItems}}" wx:key="exerciseId">
-        <view class="progress-name">{{item.exerciseName}}</view>
-        <view class="progress-level">当前：{{item.currentStage.name}}</view>
-        <view class="progress-next">下一：{{item.nextStage.name}}</view>
-        <view class="progress-cond">{{item.unlockCondition}}</view>
+    <view class="hero-card">
+      <view class="hero-badge-row">
+        <view class="hero-badge">{{heroLevelText}}</view>
+        <view class="hero-stage">{{heroStageName}}</view>
+      </view>
+      <view class="hero-title">训练 -> 进度 -> 历史</view>
+      <view class="hero-subtitle">本周完成 {{heroWeekDoneDays}}/{{heroWeekPlannedDays}} 天</view>
+      <view class="hero-progress-track">
+        <view class="hero-progress-fill" style="width: {{heroWeekCompletionRate}}%;"></view>
+      </view>
+      <view class="hero-evidence-row">
+        <view class="hero-evidence-item">
+          <view class="hero-evidence-value">{{heroMonthStreak}}</view>
+          <view class="hero-evidence-label">本月连续</view>
+        </view>
+        <view class="hero-evidence-item">
+          <view class="hero-evidence-value">{{heroWeekCompletionRate}}%</view>
+          <view class="hero-evidence-label">周完成率</view>
+        </view>
+      </view>
+      <view class="hero-evidence-text">{{heroEvidenceText}}</view>
+    </view>
+
+    <view class="card">
+      <view class="calendar-head">
+        <button class="month-switch" bindtap="onPrevMonth">上月</button>
+        <view class="month-title">{{monthTitle}}</view>
+        <button class="month-switch" bindtap="onNextMonth">下月</button>
+      </view>
+
+      <view class="weekday-row">
+        <view class="weekday" wx:for="{{weekdayLabels}}" wx:key="*this">{{item}}</view>
+      </view>
+
+      <view class="calendar-grid">
+        <view
+          class="day-cell {{item.inCurrentMonth ? '' : 'is-other'}} {{item.isSelected ? 'is-selected' : ''}}"
+          wx:for="{{monthCells}}"
+          wx:key="date"
+          data-date="{{item.date}}"
+          bindtap="onSelectDay"
+        >
+          <view class="day-number">{{item.day}}</view>
+          <view class="day-dot dot-{{item.status}}"></view>
+        </view>
+      </view>
+
+      <view class="legend">
+        <view class="legend-item"><text class="legend-dot dot-planned"></text><text>计划训练</text></view>
+        <view class="legend-item"><text class="legend-dot dot-trained"></text><text>已训练</text></view>
+        <view class="legend-item"><text class="legend-dot dot-rest"></text><text>计划休息</text></view>
+        <view class="legend-item"><text class="legend-dot dot-extra"></text><text>计划外训练</text></view>
       </view>
     </view>
 
     <view class="card">
-      <view class="card-title">操作</view>
-      <button class="secondary-button" bindtap="onGoHistory">查看训练历史</button>
-      <button class="ghost-button" bindtap="onResetPlan">重置计划</button>
+      <view class="card-title">{{selectedDate || '当日'}} 计划与完成</view>
+      <view class="plan-block">
+        <view class="plan-line">当日计划：{{selectedPlanTypeLabel}}</view>
+        <view wx:if="{{selectedDayPlan.planType === 'planned' && selectedDayPlan.plannedExercises.length}}">
+          <view class="plan-subtitle">应训练动作</view>
+          <view class="plan-row" wx:for="{{selectedDayPlan.plannedExercises}}" wx:key="exerciseId">
+            {{item.exerciseName}}
+          </view>
+        </view>
+        <view class="empty-text" wx:elif="{{selectedDayPlan.planType === 'rest'}}">该日计划休息。</view>
+        <view class="empty-text" wx:else>该日无计划动作。</view>
+      </view>
+
+      <view class="plan-subtitle">实际完成摘要</view>
+      <view wx:if="{{selectedDaySummary.length}}">
+        <view class="summary-row" wx:for="{{selectedDaySummary}}" wx:key="index">
+          <view class="summary-name">{{item.exerciseName}}</view>
+          <view class="summary-meta" wx:if="{{item.recordType === 'other'}}">时长 {{item.repsPerSetText || '-'}}</view>
+          <view class="summary-meta" wx:else>组数 {{item.sets}} · 每组次数 {{item.repsPerSetText || '-'}}</view>
+        </view>
+      </view>
+      <view class="empty-text" wx:else>当天暂无训练记录。</view>
+      <button class="secondary-button" bindtap="onGoHistory">查看完整训练历史</button>
+      <view class="ai-agreement">快捷入口：用于从进度页直接进入历史。</view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">最近记录</view>
+      <view wx:if="{{recentRecords.length}}">
+        <view class="recent-row" wx:for="{{recentRecords}}" wx:key="index">
+          <view class="recent-title">{{item.date}} · 共{{item.count}}项</view>
+          <view class="recent-meta">{{item.summaryText || '-'}}</view>
+        </view>
+      </view>
+      <view class="empty-text" wx:else>暂无最近记录。</view>
+      <view class="ai-agreement">完整入口也在「我的」页中提供。</view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">AI 分析（固定模板）</view>
+      <view class="ai-note">{{aiDisclaimer}}</view>
+      <view class="ai-note">训练目标固定为：体能提升（无需填写）。</view>
+      <view class="ai-note">资料仅在触发AI总结时按需补填，也可在“我的- 个人训练基础资料”长期维护。</view>
+      <button class="secondary-button" bindtap="onOpenAiProfileModal">填写/修改训练基础资料</button>
+      <button class="secondary-button" wx:if="{{showAiLoginRetry}}" bindtap="onContinueLoginAndRunAi">
+        继续登录并生成总结
+      </button>
+
+      <button class="secondary-button" bindtap="onRunAiAnalysis" loading="{{aiLoading}}" disabled="{{aiLoading}}">
+        生成训练总结
+      </button>
+
+      <view class="ai-error" wx:if="{{aiError}}">{{aiError}}</view>
+
+      <view class="ai-result" wx:if="{{aiResult}}">
+        <view class="ai-item">
+          <view class="ai-label">训练总览</view>
+          <view class="ai-text">{{aiResult.summary}}</view>
+        </view>
+        <view class="ai-item">
+          <view class="ai-label">连续性</view>
+          <view class="ai-text">{{aiResult.consistency}}</view>
+        </view>
+        <view class="ai-item">
+          <view class="ai-label">训练量趋势</view>
+          <view class="ai-text">{{aiResult.volumeTrend}}</view>
+        </view>
+        <view class="ai-item">
+          <view class="ai-label">六艺动作表现</view>
+          <view class="ai-text">{{aiResult.strengthFocus}}</view>
+        </view>
+        <view class="ai-item">
+          <view class="ai-label">其他训练观察</view>
+          <view class="ai-text">{{aiResult.extraTrainingInsight}}</view>
+        </view>
+        <view class="ai-item">
+          <view class="ai-label">计划内关注点</view>
+          <view class="ai-text">{{aiResult.planFocus}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="ai-modal-mask" wx:if="{{showAiProfileModal}}" bindtap="onCloseAiProfileModal">
+    <view class="ai-modal-card" catchtap="noop">
+      <view class="card-title">AI资料（首次必填）</view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">身高(cm) *</view>
+        <input class="ai-field-input" type="digit" placeholder="例如 175" value="{{aiProfile.heightCm}}" data-field="heightCm" bindinput="onAiProfileInput" />
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">体重(kg) *</view>
+        <input class="ai-field-input" type="digit" placeholder="例如 68" value="{{aiProfile.weightKg}}" data-field="weightKg" bindinput="onAiProfileInput" />
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">每周可训练天数 *</view>
+        <picker mode="selector" range="{{aiWeeklyTrainingOptions}}" data-field="weeklyTrainingDays" bindchange="onAiProfilePickerChange">
+          <view class="ai-picker-value">{{aiProfile.weeklyTrainingDays || '请选择'}}</view>
+        </picker>
+      </view>
+
+      <view class="plan-subtitle">选填信息</view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">年龄段</view>
+        <picker mode="selector" range="{{aiAgeRangeOptions}}" data-field="ageRange" bindchange="onAiProfilePickerChange">
+          <view class="ai-picker-value">{{aiProfile.ageRange || '未填写'}}</view>
+        </picker>
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">性别</view>
+        <picker mode="selector" range="{{aiGenderOptions}}" data-field="gender" bindchange="onAiProfilePickerChange">
+          <view class="ai-picker-value">{{aiProfile.gender || '未填写'}}</view>
+        </picker>
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">伤痛或禁忌部位</view>
+        <input class="ai-field-input" placeholder="例如 膝盖不适" value="{{aiProfile.injuryNotes}}" data-field="injuryNotes" bindinput="onAiProfileInput" />
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">本周主观疲劳</view>
+        <picker mode="selector" range="{{aiFatigueOptions}}" data-field="fatigueLevel" bindchange="onAiProfilePickerChange">
+          <view class="ai-picker-value">{{aiProfile.fatigueLevel || '未填写'}}</view>
+        </picker>
+      </view>
+      <view class="ai-field-row">
+        <view class="ai-field-label">其他训练偏好</view>
+        <input class="ai-field-input" placeholder="例如 慢跑/游泳" value="{{aiProfile.trainingPreference}}" data-field="trainingPreference" bindinput="onAiProfileInput" />
+      </view>
+
+      <button class="secondary-button" bindtap="onSaveAiProfileAndContinue">保存并继续AI总结</button>
+      <button class="secondary-button" bindtap="onSaveAiProfileOnly">仅保存资料</button>
+      <button class="secondary-button" bindtap="onGoAiProfileAdvanced">高级编辑（我的页面）</button>
+      <button class="secondary-button" bindtap="onCloseAiProfileModal">取消</button>
     </view>
   </view>
 </view>
+
+

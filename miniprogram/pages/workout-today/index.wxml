@@ -1,62 +1,164 @@
-<view class="page">
-  <view class="header">
-    <view class="title">今日训练</view>
-    <view class="subtitle">基于你的计划自动生成目标</view>
+﻿<view class="page">
+  <view class="header badge-header">
+    <view class="badge-top">
+      <view class="badge-shield">囚徒健身认证训练</view>
+      <view class="badge-stage">{{currentStageName}}</view>
+    </view>
+    <view class="badge-identity">你是：{{identityLabel}}</view>
+    <view class="badge-metrics">
+      <view class="metric-item">连续训练 {{streakDays}} 天</view>
+      <view class="metric-item">本周完成 {{weeklyDone}}/{{weeklyTotal}}</view>
+    </view>
+    <view class="metric-progress-track">
+      <view class="metric-progress-fill" style="width: {{weeklyPercent}}%;"></view>
+    </view>
+    <view class="hero-claim">今日训练，立即变强</view>
+    <view class="hero-summary">{{heroSummaryText}}</view>
+    <button class="hero-primary-button" loading="{{submitting}}" bindtap="onPrimaryAction">{{primaryActionText}}</button>
   </view>
 
-  <view class="card" wx:if="{{todayPlan}}">
+  <view class="card" wx:if="{{dayStatus === 'training' && todayPlan}}">
     <view class="card-title">今日目标</view>
     <view class="meta">
       <view class="meta-item">日期：{{todayPlan.date}}</view>
-      <view class="meta-item">动作数：{{todayPlan.exercises.length}}</view>
+      <view class="meta-item">动作数：{{displayExercises.length}}</view>
     </view>
-    <view class="exercise-list">
-      <view class="exercise-row" wx:for="{{todayPlan.exercises}}" wx:key="id">
-        <view class="exercise-name">{{exerciseNameMap[item] || item}}</view>
-        <view class="exercise-target">
-          第 {{todayPlan.targets[item].level}} 级
-          <text wx:if="{{todayPlan.targets[item].setsRange}}"> · {{todayPlan.targets[item].setsRange}} 组</text>
+    <view class="exercise-list" wx:if="{{displayExercises.length}}">
+      <view class="exercise-row" wx:for="{{displayExercises}}" wx:key="id">
+        <view class="exercise-top">
+          <view class="exercise-name">{{exerciseNameMap[item] || item}}</view>
+          <button class="mini-link" data-exercise-id="{{item}}" bindtap="onViewMethod" size="mini">
+            查看方法
+          </button>
+        </view>
+        <view class="exercise-target">{{levelNameMap[item] || "-"}}</view>
+      </view>
+    </view>
+    <view class="empty-text" wx:else>当前阶段暂无可训练动作。</view>
+  </view>
+
+  <view class="card empty" wx:if="{{!hasActivePlan}}">
+    <view class="card-title">未创建训练计划</view>
+    <view class="empty-text">请先完成计划设置后再开始今日训练。</view>
+    <button class="secondary-button" bindtap="onResetPlan">前往计划设置</button>
+  </view>
+
+
+  <view class="card" id="record-card" wx:if="{{dayStatus === 'training'}}">
+    <view class="card-title">今日训练录入（动作 / 组数 / 次数）</view>
+    <view class="entry-head">
+      <text>动作</text>
+      <text>组数</text>
+      <text>次数</text>
+    </view>
+    <view class="entry-row" wx:for="{{displayExercises}}" wx:key="id">
+      <view class="entry-action">{{exerciseNameMap[item] || item}}</view>
+      <input
+        class="mini-input"
+        type="number"
+        placeholder="组"
+        data-exercise-id="{{item}}"
+        data-field="sets"
+        value="{{formByExercise[item].sets}}"
+        bindinput="onFormInputChange"
+      />
+      <input
+        class="mini-input"
+        type="number"
+        placeholder="次"
+        data-exercise-id="{{item}}"
+        data-field="reps"
+        value="{{formByExercise[item].reps}}"
+        bindinput="onFormInputChange"
+      />
+    </view>
+    <view class="other-training">
+      <view class="other-title">其他训练（可选，用于进度总结）</view>
+      <view class="other-row">
+        <input
+          class="other-input name"
+          placeholder="例如：慢跑 / 太极拳 / 游泳"
+          value="{{otherTrainingName}}"
+          data-field="otherTrainingName"
+          bindinput="onOtherTrainingInput"
+        />
+        <input
+          class="other-input duration"
+          type="number"
+          placeholder="时长(分钟)"
+          value="{{otherTrainingDuration}}"
+          data-field="otherTrainingDuration"
+          bindinput="onOtherTrainingInput"
+        />
+      </view>
+    </view>
+    <view class="hint">填写后点击顶部主按钮提交训练。</view>
+
+  </view>
+
+  <view class="card" id="history-record-card" wx:if="{{hasActivePlan}}">
+    <view class="card-title">补录历史训练（近7天）</view>
+    <view wx:if="{{historyEditorVisible}}">
+      <view class="history-date-row">
+        <view class="history-date-label">补录日期</view>
+        <picker mode="date" start="{{historyDateMin}}" end="{{historyDateMax}}" value="{{historyRecordDate}}" bindchange="onHistoryDateChange">
+          <view class="history-date-value">{{historyRecordDate}}</view>
+        </picker>
+      </view>
+      <view class="hint" wx:if="{{historyLoading}}">正在加载该日期训练动作...</view>
+      <view wx:else>
+        <view class="entry-head">
+          <text>动作</text>
+          <text>组数</text>
+          <text>次数</text>
+        </view>
+        <view class="entry-row" wx:for="{{historyDisplayExercises}}" wx:key="id">
+          <view class="entry-action">{{exerciseNameMap[item] || item}}</view>
+          <input
+            class="mini-input"
+            type="number"
+            placeholder="组"
+            data-exercise-id="{{item}}"
+            data-field="sets"
+            value="{{historyFormByExercise[item].sets}}"
+            bindinput="onHistoryFormInputChange"
+          />
+          <input
+            class="mini-input"
+            type="number"
+            placeholder="次"
+            data-exercise-id="{{item}}"
+            data-field="reps"
+            value="{{historyFormByExercise[item].reps}}"
+            bindinput="onHistoryFormInputChange"
+          />
+        </view>
+        <view class="empty-text" wx:if="{{!historyDisplayExercises.length}}">该日期无计划动作，可仅填写“其他训练”。</view>
+        <view class="other-training">
+          <view class="other-title">其他训练（可选）</view>
+          <view class="other-row">
+            <input
+              class="other-input name"
+              placeholder="例如：慢跑 / 太极拳 / 游泳"
+              value="{{historyOtherTrainingName}}"
+              data-field="historyOtherTrainingName"
+              bindinput="onHistoryOtherTrainingInput"
+            />
+            <input
+              class="other-input duration"
+              type="number"
+              placeholder="时长(分钟)"
+              value="{{historyOtherTrainingDuration}}"
+              data-field="historyOtherTrainingDuration"
+              bindinput="onHistoryOtherTrainingInput"
+            />
+          </view>
         </view>
       </view>
     </view>
-  </view>
-
-  <view class="card empty" wx:if="{{!todayPlan}}">
-    <view class="card-title">未生成今日训练</view>
-    <view class="empty-text">请先完成计划设置，或重新刷新。</view>
-    <button class="secondary-button" bindtap="loadToday">刷新今日训练</button>
-  </view>
-
-  <view class="card">
-    <view class="card-title">训练记录</view>
-    <view class="field">
-      <view class="label">动作</view>
-      <picker mode="selector" range="{{exerciseOptions}}" value="{{selectedExerciseIndex}}" bindchange="onExerciseChange">
-        <view class="picker">{{exerciseOptions[selectedExerciseIndex] || '请选择动作'}}</view>
-      </picker>
-    </view>
-    <view class="field">
-      <view class="label">组数</view>
-      <input class="input" type="number" data-field="sets" bindinput="onInputChange" value="{{form.sets}}" placeholder="例如 3" />
-    </view>
-    <view class="field">
-      <view class="label">次数</view>
-      <input class="input" type="number" data-field="reps" bindinput="onInputChange" value="{{form.reps}}" placeholder="例如 12" />
-    </view>
-    <view class="field">
-      <view class="label">时长（分钟）</view>
-      <input class="input" type="number" data-field="duration" bindinput="onInputChange" value="{{form.duration}}" placeholder="例如 15" />
-    </view>
-    <view class="field">
-      <view class="label">主观强度（RPE 1-10）</view>
-      <input class="input" type="number" data-field="rpe" bindinput="onInputChange" value="{{form.rpe}}" placeholder="例如 7" />
-    </view>
-    <view class="field">
-      <view class="label">备注（可选）</view>
-      <input class="input" data-field="notes" bindinput="onInputChange" value="{{form.notes}}" placeholder="如动作感觉、疲劳等" />
-    </view>
-    <button class="primary-button" loading="{{submitting}}" bindtap="onSubmit">提交记录</button>
-    <button class="secondary-button" loading="{{submitting}}" bindtap="onDiarySubmit">保存为训练日记</button>
+    <button class="secondary-button" loading="{{submitting || historyLoading}}" bindtap="onHistoryPrimaryAction">
+      {{historyEditorVisible ? '提交' : '补录历史训练'}}
+    </button>
   </view>
 
   <view class="card">
@@ -65,17 +167,27 @@
       <view class="label">训练描述</view>
       <textarea
         class="textarea"
-        placeholder="例如：俯卧撑 3 组 每组 12 次 RPE 7"
+        placeholder="例如：举腿3组每组12次，深蹲2组每组20次"
         bindinput="onAiInputChange"
         value="{{aiRawText}}"
       />
     </view>
+    <view class="field">
+      <view class="label">AI 入账模式</view>
+      <radio-group class="mode-group" bindchange="onAiModeChange">
+        <label class="mode-item" wx:for="{{aiEntryModeOptions}}" wx:key="value">
+          <radio value="{{item.value}}" checked="{{aiEntryMode === item.value}}" />
+          <text>{{item.label}}</text>
+        </label>
+      </radio-group>
+    </view>
     <button class="secondary-button" loading="{{aiLoading}}" bindtap="onAiParse">AI 解析</button>
-    <view class="ai-result" wx:if="{{aiResult}}">
-      <view class="ai-line">解析动作：{{aiResult.exerciseId || "未识别"}}</view>
-      <view class="ai-line">组数：{{aiResult.sets || "-"}} / 次数：{{aiResult.reps || "-"}}</view>
-      <view class="ai-line">时长：{{aiResult.duration || "-"}} / RPE：{{aiResult.rpe || "-"}}</view>
-      <view class="ai-line">置信度：{{aiResult.confidence || 0}}</view>
+    <button class="ghost-button" wx:if="{{aiDraft}}" bindtap="onApplyAiDraft">应用待确认草稿</button>
+    <view class="ai-result" wx:if="{{aiResult && aiResult.items && aiResult.items.length}}">
+      <view class="ai-line">解析到 {{aiResult.items.length}} 项动作：</view>
+      <view class="ai-line" wx:for="{{aiResult.items}}" wx:key="exerciseId">
+        {{exerciseNameMap[item.exerciseId] || item.exerciseId}}：{{item.sets}}组 / {{item.reps}}次（置信度 {{item.confidence}}）
+      </view>
     </view>
   </view>
 
@@ -84,3 +196,6 @@
     <button class="ghost-button" bindtap="onResetPlan">重新设置计划</button>
   </view>
 </view>
+
+
+
