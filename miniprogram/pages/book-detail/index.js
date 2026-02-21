@@ -1,4 +1,19 @@
 const { callCloud } = require("../../services/api");
+const {
+  EXERCISE_NAME_MAP,
+  getMethodChapterNo,
+  normalizeMethodLevel,
+} = require("../../data/method-sections");
+
+const METHOD_EXERCISE_ORDER = ["push", "squat", "pull", "leg", "bridge", "hand"];
+
+function buildMethodExerciseList() {
+  return METHOD_EXERCISE_ORDER.map((exerciseId) => ({
+    exerciseId,
+    exerciseName: EXERCISE_NAME_MAP[exerciseId] || exerciseId,
+    chapterNo: getMethodChapterNo(exerciseId),
+  })).filter((item) => item.chapterNo > 0);
+}
 
 Page({
   data: {
@@ -8,6 +23,7 @@ Page({
     book: null,
     chapters: [],
     progress: null,
+    methodExercises: buildMethodExerciseList(),
   },
 
   onLoad(query) {
@@ -51,5 +67,19 @@ Page({
   onContinueRead() {
     const chapterNo = Number(this.data.progress?.chapterNo) || 1;
     wx.navigateTo({ url: `/pages/reader/index?bookId=${encodeURIComponent(this.data.bookId)}&chapterNo=${chapterNo}` });
+  },
+
+  onOpenMethod(event) {
+    const exerciseId = String(event?.currentTarget?.dataset?.exerciseId || "");
+    const chapterNo = getMethodChapterNo(exerciseId);
+    if (!chapterNo) {
+      return;
+    }
+    const level = normalizeMethodLevel(event?.currentTarget?.dataset?.level || 1);
+    wx.navigateTo({
+      url: `/pages/reader/index?bookId=${encodeURIComponent(
+        this.data.bookId
+      )}&chapterNo=${chapterNo}&exerciseId=${exerciseId}&level=${level}&mode=method`,
+    });
   },
 });

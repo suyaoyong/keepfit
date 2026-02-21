@@ -28,5 +28,23 @@
         <view class="chapter-meta">{{item.wordCount || 0}} 字</view>
       </view>
     </view>
+
+    <view class="card">
+      <view class="card-title">六艺十式速查</view>
+      <view class="chapter-row" wx:for="{{methodExercises}}" wx:key="exerciseId">
+        <view class="method-row">
+          <view class="chapter-title">{{item.exerciseName}}</view>
+          <button
+            class="mini-method-button"
+            data-exercise-id="{{item.exerciseId}}"
+            data-level="1"
+            bindtap="onOpenMethod"
+            size="mini"
+          >
+            进入十式
+          </button>
+        </view>
+      </view>
+    </view>
   </block>
 </view>

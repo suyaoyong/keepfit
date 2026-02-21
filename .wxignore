@@ -1,0 +1,45 @@
+# =========================
+# WeChat upload ignore rules
+# =========================
+
+# Sensitive config / secrets
+project.private.config.json
+**/project.private.config.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+*.env
+*.env.*
+!.env.example
+!.env.sample
+secrets/
+secret/
+*.secret
+
+# Temp / editor / system files
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Build / cache artifacts
+node_modules/
+miniprogram_npm/
+dist/
+build/
+coverage/
+.nyc_output/
+
+# Local planning / spec artifacts
+specs/
+.specify/

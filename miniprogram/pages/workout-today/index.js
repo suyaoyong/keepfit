@@ -6,6 +6,11 @@ const {
   getAuthProfile,
   getSchedules,
 } = require("../../services/api");
+const {
+  METHOD_BOOK_ID,
+  getMethodChapterNo,
+  normalizeMethodLevel,
+} = require("../../data/method-sections");
 
 const PLAN_ID_KEY = "activePlanId";
 const AI_ENTRY_MODE_KEY = "keepfit:ai-entry-mode";
@@ -651,33 +656,18 @@ Page({
       return;
     }
 
-    const level = this.data.todayPlan?.targets?.[exerciseId]?.level || 1;
-    try {
-      const result = await callCloud("method", { exerciseId, level });
-      const item = result?.items?.[0];
-      if (!item) {
-        wx.showToast({ title: "暂无训练方法", icon: "none" });
-        return;
-      }
-
-      const targets = item.targets || {};
-      const targetsText = [
-        targets.beginner ? `初级：${targets.beginner}` : "",
-        targets.intermediate ? `中级：${targets.intermediate}` : "",
-        targets.upgrade ? `升级：${targets.upgrade}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-      const content = [item.method || "", targetsText].filter(Boolean).join("\n\n");
-
-      wx.showModal({
-        title: `${item.levelName || `第${level}式`}训练方法`,
-        content: content.slice(0, 500),
-        showCancel: false,
-      });
-    } catch (error) {
-      wx.showToast({ title: error.message || "加载训练方法失败", icon: "none" });
+    const chapterNo = getMethodChapterNo(exerciseId);
+    if (!chapterNo) {
+      wx.showToast({ title: "暂无训练方法", icon: "none" });
+      return;
     }
+    const level = normalizeMethodLevel(this.data.todayPlan?.targets?.[exerciseId]?.level || 1);
+
+    wx.navigateTo({
+      url: `/pages/reader/index?bookId=${encodeURIComponent(
+        METHOD_BOOK_ID
+      )}&chapterNo=${chapterNo}&exerciseId=${exerciseId}&level=${level}&mode=method`,
+    });
   },
 
   onAiInputChange(e) {

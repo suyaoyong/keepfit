@@ -28,7 +28,7 @@
   </scroll-view>
 
   <view class="reader-actions">
-    <button class="secondary-button" bindtap="onPrevChapter" disabled="{{chapterNo <= 1}}">上一章</button>
-    <button class="secondary-button" bindtap="onNextChapter">下一章</button>
+    <button class="secondary-button" bindtap="onPrevChapter" disabled="{{prevDisabled}}">{{prevLabel}}</button>
+    <button class="secondary-button" bindtap="onNextChapter" disabled="{{nextDisabled}}">{{nextLabel}}</button>
   </view>
 </view>
