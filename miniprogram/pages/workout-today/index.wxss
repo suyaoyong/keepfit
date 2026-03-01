@@ -186,27 +186,6 @@
   box-sizing: border-box;
 }
 
-.field {
-  margin-bottom: 12rpx;
-}
-
-.label {
-  font-size: 22rpx;
-  color: #6a5f54;
-  margin-bottom: 8rpx;
-}
-
-.textarea {
-  width: 100%;
-  min-height: 60rpx;
-  padding: 8rpx 16rpx;
-  border-radius: 14rpx;
-  border: 1rpx solid rgba(88, 64, 30, 0.2);
-  background: #faf8f4;
-  font-size: 24rpx;
-  box-sizing: border-box;
-}
-
 .primary-button {
   margin-top: 12rpx;
   background: #1f1b17;
@@ -268,33 +247,6 @@
   margin-bottom: 16rpx;
 }
 
-.ai-result {
-  margin-top: 14rpx;
-  padding: 14rpx;
-  border-radius: 14rpx;
-  background: rgba(31, 27, 23, 0.06);
-  font-size: 22rpx;
-  color: #6a5f54;
-}
-
-.ai-line {
-  margin-bottom: 6rpx;
-}
-
-.mode-group {
-  display: flex;
-  gap: 16rpx;
-  flex-wrap: wrap;
-}
-
-.mode-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 8rpx;
-  font-size: 22rpx;
-  color: #5b4835;
-}
-
 /* V2 black-orange focus layer */
 .page {
   background: #111111;
@@ -327,20 +279,15 @@
 .meta,
 .exercise-target,
 .entry-head,
-.label,
 .hint,
 .history-date-label,
 .other-title,
-.ai-result,
-.ai-line,
-.empty-text,
-.mode-item {
+.empty-text {
   color: #9a9a9a;
 }
 
 .mini-input,
 .other-input,
-.textarea,
 .history-date-value {
   background: #111111;
   border-color: #2a2a2a;
