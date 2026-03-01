@@ -1,9 +1,7 @@
 ﻿const { convictStructure } = require("../../data/convict-structure");
 const {
   callCloud,
-  ensureCloudInit,
   getTodayWorkout,
-  getAuthProfile,
   getSchedules,
 } = require("../../services/api");
 const {
@@ -13,10 +11,6 @@ const {
 } = require("../../data/method-sections");
 
 const PLAN_ID_KEY = "activePlanId";
-const AI_ENTRY_MODE_KEY = "keepfit:ai-entry-mode";
-const AI_ENTRY_MODE_AUTO = "auto";
-const AI_ENTRY_MODE_CONFIRM = "confirm";
-const AI_CONFIDENCE_THRESHOLD = 0.8;
 const HISTORY_RECORD_MAX_DAYS = 7;
 const STAGE_TO_LEVEL = {
   初试身手: 1,
@@ -24,6 +18,8 @@ const STAGE_TO_LEVEL = {
   炉火纯青: 3,
   闭关修炼: 4,
 };
+const SHARE_PATH = "/pages/workout-today/index";
+const DEFAULT_SHARE_TITLE = "KeepFit 今日训练";
 
 function buildExerciseMap() {
   return convictStructure.reduce((acc, item) => {
@@ -49,14 +45,6 @@ function buildFormByExercise(exerciseIds, source = {}) {
     };
     return acc;
   }, {});
-}
-
-function normalizeAiNumber(value) {
-  const num = Number(value);
-  if (!Number.isFinite(num) || num <= 0) {
-    return 0;
-  }
-  return Math.floor(num);
 }
 
 function addDays(baseDate, deltaDays) {
@@ -96,16 +84,6 @@ Page({
     weeklyPercent: 0,
     primaryActionText: "开始训练",
     heroSummaryText: "",
-
-    aiRawText: "",
-    aiResult: null,
-    aiLoading: false,
-    aiDraft: null,
-    aiEntryMode: AI_ENTRY_MODE_AUTO,
-    aiEntryModeOptions: [
-      { label: "自动入账", value: AI_ENTRY_MODE_AUTO },
-      { label: "先确认后入账", value: AI_ENTRY_MODE_CONFIRM },
-    ],
   },
 
   onLoad() {
@@ -117,7 +95,6 @@ Page({
       historyDateMin: minDate,
       historyDateMax: today,
     });
-    this.loadAiEntryMode();
   },
 
   async onShow() {
@@ -670,293 +647,22 @@ Page({
     });
   },
 
-  onAiInputChange(e) {
-    this.setData({ aiRawText: e.detail.value || "" });
-  },
-
-  loadAiEntryMode() {
-    const stored = wx.getStorageSync(AI_ENTRY_MODE_KEY);
-    const mode =
-      stored === AI_ENTRY_MODE_CONFIRM || stored === AI_ENTRY_MODE_AUTO
-        ? stored
-        : AI_ENTRY_MODE_AUTO;
-    this.setData({ aiEntryMode: mode });
-  },
-
-  onAiModeChange(e) {
-    const mode = e?.detail?.value;
-    const value =
-      mode === AI_ENTRY_MODE_CONFIRM || mode === AI_ENTRY_MODE_AUTO
-        ? mode
-        : AI_ENTRY_MODE_AUTO;
-    wx.setStorageSync(AI_ENTRY_MODE_KEY, value);
-    this.setData({ aiEntryMode: value });
-  },
-
-  async onAiParse() {
-    if (!this.data.aiRawText.trim()) {
-      wx.showToast({ title: "请先输入训练描述", icon: "none" });
-      return;
-    }
-    const authorized = await this.ensureAiAuthorized();
-    if (!authorized) {
-      return;
-    }
-    this.setData({ aiLoading: true });
-    try {
-      const result = await this.runAiParse(this.data.aiRawText);
-      const payload = result || {};
-      this.setData({ aiResult: payload, aiDraft: null });
-      await this.applyAiResult(payload);
-    } catch (error) {
-      const code = error?.errCode || error?.code || "";
-      const message = error?.message || "解析失败";
-      wx.showModal({
-        title: "AI 解析失败",
-        content: code ? `${message}（${code}）` : message,
-        showCancel: false,
-      });
-    } finally {
-      this.setData({ aiLoading: false });
-    }
-  },
-
-  async ensureAiAuthorized() {
-    const profile = await getAuthProfile();
-    if (profile?.status === "authorized") {
-      return true;
-    }
-    return new Promise((resolve) => {
-      wx.showModal({
-        title: "需要登录后使用 AI",
-        content: "AI解析仅在登录后可用。手动记录不受影响，是否现在去登录？",
-        confirmText: "去登录",
-        cancelText: "稍后",
-        success: (res) => {
-          if (!res.confirm) {
-            resolve(false);
-            return;
-          }
-          wx.navigateTo({ url: "/pages/login/index" });
-          resolve(false);
-        },
-        fail: () => resolve(false),
-      });
-    });
-  },
-
-  async runAiParse(rawText) {
-    try {
-      ensureCloudInit();
-      const ai = wx.cloud?.extend?.AI;
-      if (ai && typeof ai.createModel === "function") {
-        const model = ai.createModel("deepseek");
-        const res = await model.generateText({
-          model: "deepseek-v3",
-          messages: [
-            {
-              role: "system",
-              content:
-                "你是训练记录解析助手。只输出一个 JSON 对象，不要包含代码块或多余文本。输出格式：{\"items\":[{\"exerciseId\":\"push|squat|pull|leg|bridge|hand\",\"exerciseName\":\"动作中文名\",\"sets\":数字,\"reps\":数字,\"confidence\":0-1}] }。可同时解析多个动作；未提及动作不要输出。动作映射：俯卧撑=push，深蹲=squat，引体向上=pull，举腿=leg，桥=bridge，倒立撑=hand。",
-            },
-            { role: "user", content: rawText },
-          ],
-        });
-        const content = res?.choices?.[0]?.message?.content || "{}";
-        return this.normalizeAiPayload(this.safeParseAiContent(content));
-      }
-    } catch (error) {
-      // fallback
-    }
-
-    const cloudPayload = await callCloud("ai-parse", { rawText });
-    return this.normalizeAiPayload(cloudPayload);
-  },
-
-  safeParseAiContent(content) {
-    const trimmed = (content || "").trim();
-    try {
-      return JSON.parse(trimmed);
-    } catch (error) {
-      const match = trimmed.match(/\{[\s\S]*\}/);
-      if (match) {
-        try {
-          return JSON.parse(match[0]);
-        } catch (innerError) {
-          return {};
-        }
-      }
-      return {};
-    }
-  },
-
-  normalizeAiPayload(payload) {
-    const source = payload && typeof payload === "object" ? payload : {};
-    const fallbackSingle =
-      source.exerciseId || source.exerciseName
-        ? [
-            {
-              exerciseId: source.exerciseId,
-              exerciseName: source.exerciseName,
-              sets: source.sets,
-              reps: source.reps,
-              confidence: source.confidence,
-            },
-          ]
-        : [];
-    const rawItems = Array.isArray(source.items) ? source.items : fallbackSingle;
-
-    const merged = {};
-    rawItems.forEach((item) => {
-      const id =
-        this.mapExerciseId(item?.exerciseId) || this.mapExerciseId(item?.exerciseName) || "";
-      if (!id) {
-        return;
-      }
-      const sets = normalizeAiNumber(item?.sets);
-      const reps = normalizeAiNumber(item?.reps);
-      if (!sets || !reps) {
-        return;
-      }
-      const confidence = Number(
-        Math.min(1, Math.max(0, Number(item?.confidence) || 0)).toFixed(2)
-      );
-      const prev = merged[id];
-      if (!prev) {
-        merged[id] = { exerciseId: id, sets, reps, confidence };
-        return;
-      }
-      if (confidence >= prev.confidence) {
-        merged[id] = { exerciseId: id, sets, reps, confidence };
-      }
-    });
-
-    return { items: Object.values(merged) };
-  },
-
-  buildAiSummary(items) {
-    if (!items.length) {
-      return "未识别到可录入动作，请改用手动录入。";
-    }
-    return items
-      .map((item, idx) => {
-        const name = this.data.exerciseNameMap[item.exerciseId] || item.exerciseId;
-        return `${idx + 1}. ${name} ${item.sets}组 x ${item.reps}次（置信度 ${item.confidence.toFixed(
-          2
-        )}）`;
-      })
-      .join("\n");
-  },
-
-  async applyAiResult(payload) {
-    const items = Array.isArray(payload?.items) ? payload.items : [];
-    const validItems = items.filter((item) => this.data.displayExercises.includes(item.exerciseId));
-    const summary = this.buildAiSummary(validItems);
-
-    if (!validItems.length) {
-      wx.showModal({
-        title: "AI 解析结果",
-        content: summary,
-        showCancel: false,
-      });
-      return Promise.resolve();
-    }
-
-    const hasLowConfidence = validItems.some((item) => item.confidence < AI_CONFIDENCE_THRESHOLD);
-    if (hasLowConfidence) {
-      this.setData({ aiDraft: { items: validItems } });
-      return new Promise((resolve) => {
-        wx.showModal({
-          title: "低置信度结果已存为草稿",
-          content: `${summary}\n\n该结果不会自动入账，请手动确认后再填入表单。`,
-          confirmText: "查看草稿",
-          cancelText: "关闭",
-          success: (res) => {
-            if (res.confirm) {
-              this.onApplyAiDraft();
-            }
-            resolve();
-          },
-        });
-      });
-    }
-
-    if (this.data.aiEntryMode === AI_ENTRY_MODE_AUTO) {
-      this.fillFormFromAi({ items: validItems });
-      wx.showToast({ title: `已自动填入${validItems.length}项`, icon: "success" });
-      return Promise.resolve();
-    }
-
-    return new Promise((resolve) => {
-      wx.showModal({
-        title: "解析结果",
-        content: summary,
-        confirmText: "填入表单",
-        cancelText: "取消",
-        success: (res) => {
-          if (res.confirm) {
-            this.fillFormFromAi({ items: validItems });
-          }
-          resolve();
-        },
-      });
-    });
-  },
-
-  onApplyAiDraft() {
-    const draft = this.data.aiDraft;
-    if (!draft) {
-      wx.showToast({ title: "暂无草稿", icon: "none" });
-      return;
-    }
-    this.fillFormFromAi(draft);
-    this.setData({ aiDraft: null });
-  },
-
-  fillFormFromAi(payload) {
-    const items = Array.isArray(payload?.items) ? payload.items : [];
-    if (!items.length) {
-      return;
-    }
-    const updates = {};
-    items.forEach((item) => {
-      const exerciseId = this.mapExerciseId(item?.exerciseId) || "";
-      if (!exerciseId || !this.data.displayExercises.includes(exerciseId)) {
-        return;
-      }
-      const sets = normalizeAiNumber(item?.sets);
-      const reps = normalizeAiNumber(item?.reps);
-      if (!sets || !reps) {
-        return;
-      }
-      updates[`formByExercise.${exerciseId}.sets`] = String(sets);
-      updates[`formByExercise.${exerciseId}.reps`] = String(reps);
-    });
-    if (Object.keys(updates).length) {
-      this.setData(updates);
-    }
-  },
-
-  mapExerciseId(value) {
-    if (!value) {
-      return "";
-    }
-    const normalized = String(value).trim();
-    const mapping = {
-      push: "push",
-      squat: "squat",
-      pull: "pull",
-      leg: "leg",
-      bridge: "bridge",
-      hand: "hand",
-      俯卧撑: "push",
-      深蹲: "squat",
-      引体向上: "pull",
-      举腿: "leg",
-      桥: "bridge",
-      倒立撑: "hand",
+  buildSharePayload() {
+    const summary = String(this.data.heroSummaryText || "").trim();
+    return {
+      title: summary || DEFAULT_SHARE_TITLE,
+      path: SHARE_PATH,
     };
-    return mapping[normalized] || "";
+  },
+
+  onShareAppMessage() {
+    return this.buildSharePayload();
+  },
+
+  onShareTimeline() {
+    return {
+      title: this.buildSharePayload().title,
+    };
   },
 
   onResetPlan() {

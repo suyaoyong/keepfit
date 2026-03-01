@@ -45,6 +45,8 @@ const AI_WEEKLY_TRAINING_OPTIONS = ["1-2天", "3-4天", "5天及以上"];
 const AI_AGE_RANGE_OPTIONS = ["未填写", "18岁以下", "18-29岁", "30-39岁", "40岁及以上"];
 const AI_GENDER_OPTIONS = ["未填写", "男", "女", "其他", "不透露"];
 const AI_FATIGUE_OPTIONS = ["未填写", "低", "中", "高"];
+const SHARE_PATH = "/pages/progress/index";
+const DEFAULT_SHARE_TITLE = "KeepFit 训练进度";
 const STAGE_TO_LEVEL = {
   初试身手: 1,
   渐入佳境: 2,
@@ -893,6 +895,19 @@ Page({
 
   onGoHistory() {
     wx.navigateTo({ url: "/pages/workout-history/index" });
+  },
+
+  onShareAppMessage() {
+    return {
+      title: DEFAULT_SHARE_TITLE,
+      path: SHARE_PATH,
+    };
+  },
+
+  onShareTimeline() {
+    return {
+      title: DEFAULT_SHARE_TITLE,
+    };
   },
 
   noop() {},

@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "进度"
+  "navigationBarTitleText": "进度",
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true
 }

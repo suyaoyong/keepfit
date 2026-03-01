@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "今日训练"
+  "navigationBarTitleText": "今日训练",
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true
 }

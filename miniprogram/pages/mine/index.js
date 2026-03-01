@@ -10,6 +10,8 @@ const AI_AGE_RANGE_OPTIONS = ["未填写", "18岁以下", "18-29岁", "30-39岁"
 const AI_GENDER_OPTIONS = ["未填写", "男", "女", "其他", "不透露"];
 const AI_FATIGUE_OPTIONS = ["未填写", "低", "中", "高"];
 const FEEDBACK_LOCAL_KEY = "keepfit:feedback:local";
+const SHARE_PATH = "/pages/mine/index";
+const DEFAULT_SHARE_TITLE = "KeepFit 我的训练档案";
 const STAGE_TO_LEVEL = {
   初试身手: 1,
   渐入佳境: 2,
@@ -530,6 +532,18 @@ Page({
     });
   },
 
+  onShareAppMessage() {
+    return {
+      title: DEFAULT_SHARE_TITLE,
+      path: SHARE_PATH,
+    };
+  },
+
+  onShareTimeline() {
+    return {
+      title: DEFAULT_SHARE_TITLE,
+    };
+  },
+
   noop() {},
 });
-
