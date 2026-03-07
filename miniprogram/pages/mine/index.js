@@ -418,7 +418,7 @@ Page({
       contact,
       source: "mine-feedback-modal",
     })
-      .then(() => {
+      .then((result) => {
         this.setData({
           showFeedbackModal: false,
           feedbackForm: {
@@ -426,7 +426,11 @@ Page({
             contact: "",
           },
         });
-        wx.showToast({ title: "?????", icon: "success" });
+        const pushed = Boolean(result?.pushed);
+        wx.showToast({
+          title: pushed ? "已提交并推送" : "已提交（推送待检查）",
+          icon: "success",
+        });
       })
       .catch((error) => {
         const localBackup = {
