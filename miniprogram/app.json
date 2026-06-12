@@ -46,6 +46,9 @@
       }
     ]
   },
+  "agent": {
+    "pageMetadata": "page-meta.json"
+  },
   "sitemapLocation": "sitemap.json",
   "style": "v2",
   "lazyCodeLoading": "requiredComponents"
