@@ -299,6 +299,16 @@ function buildDefaultAiProfile() {
   };
 }
 
+function mergeAiRequiredProfile(source, base = buildDefaultAiProfile()) {
+  const data = source && typeof source === "object" ? source : {};
+  return {
+    ...base,
+    heightCm: data.heightCm || base.heightCm || "",
+    weightKg: data.weightKg || base.weightKg || "",
+    weeklyTrainingDays: data.weeklyTrainingDays || base.weeklyTrainingDays || "",
+  };
+}
+
 function buildAiProfileContext(aiProfile) {
   const profile = aiProfile || buildDefaultAiProfile();
   return [
@@ -496,7 +506,7 @@ Page({
   },
 
   async bootstrap() {
-    this.loadAiProfile();
+    await this.loadAiProfile();
     this.syncAiLoginRetryHint();
     this.hydrateMonthCache();
     this.setData({ loading: true });
@@ -504,18 +514,30 @@ Page({
     this.setData({ loading: false });
   },
 
-  loadAiProfile() {
+  async loadAiProfile() {
     const stored = wx.getStorageSync(AI_PROFILE_KEY);
+    let aiProfile = buildDefaultAiProfile();
     if (!stored || typeof stored !== "object") {
-      this.setData({ aiProfile: buildDefaultAiProfile() });
-      return;
-    }
-    this.setData({
-      aiProfile: {
+      this.setData({ aiProfile });
+    } else {
+      aiProfile = {
         ...buildDefaultAiProfile(),
         ...stored,
-      },
-    });
+      };
+      this.setData({ aiProfile });
+    }
+
+    try {
+      const cloudProfile = await callCloud("profile", { action: "get" });
+      if (!cloudProfile || typeof cloudProfile !== "object") {
+        return;
+      }
+      const merged = mergeAiRequiredProfile(cloudProfile, aiProfile);
+      wx.setStorageSync(AI_PROFILE_KEY, merged);
+      this.setData({ aiProfile: merged });
+    } catch (error) {
+      // Keep local cache as the fallback when the cloud profile cannot be read.
+    }
   },
 
   syncAiLoginRetryHint() {
@@ -724,9 +746,25 @@ Page({
     return aiProfile;
   },
 
-  onSaveAiProfileOnly() {
-    this.saveAiProfile();
-    wx.showToast({ title: "AI资料已保存", icon: "success" });
+  async syncAiRequiredProfileToCloud(aiProfile) {
+    return callCloud("profile", {
+      action: "set",
+      profile: {
+        heightCm: aiProfile.heightCm,
+        weightKg: aiProfile.weightKg,
+        weeklyTrainingDays: aiProfile.weeklyTrainingDays,
+      },
+    });
+  },
+
+  async onSaveAiProfileOnly() {
+    const aiProfile = this.saveAiProfile();
+    try {
+      await this.syncAiRequiredProfileToCloud(aiProfile);
+      wx.showToast({ title: "AI资料已保存", icon: "success" });
+    } catch (error) {
+      wx.showToast({ title: error?.message || "云端同步失败", icon: "none" });
+    }
   },
 
   async onSaveAiProfileAndContinue() {
@@ -735,12 +773,23 @@ Page({
       wx.showToast({ title: "请补充身高/体重/每周可训练天数", icon: "none" });
       return;
     }
+    try {
+      await this.syncAiRequiredProfileToCloud(aiProfile);
+    } catch (error) {
+      wx.showToast({ title: error?.message || "云端同步失败", icon: "none" });
+      return;
+    }
     this.setData({ showAiProfileModal: false });
     await this.runAiAnalysis(aiProfile);
   },
 
-  onGoAiProfileAdvanced() {
-    this.saveAiProfile();
+  async onGoAiProfileAdvanced() {
+    const aiProfile = this.saveAiProfile();
+    try {
+      await this.syncAiRequiredProfileToCloud(aiProfile);
+    } catch (error) {
+      // Do not block navigation to the full editor; local cache has been saved.
+    }
     this.setData({ showAiProfileModal: false });
     wx.setStorageSync(AI_PROFILE_EDIT_REQUEST_KEY, true);
     wx.switchTab({ url: "/pages/mine/index" });
@@ -822,6 +871,12 @@ Page({
       return;
     }
     this.saveAiProfile();
+    try {
+      await this.syncAiRequiredProfileToCloud(aiProfile);
+    } catch (error) {
+      wx.showToast({ title: error?.message || "云端同步失败", icon: "none" });
+      return;
+    }
     await this.runAiAnalysis(aiProfile);
   },
 

@@ -16,6 +16,9 @@
 - trainingFrequency
 - sessionDuration
 - injuryNotes
+- heightCm
+- weightKg
+- weeklyTrainingDays
 
 ## plans
 - openid

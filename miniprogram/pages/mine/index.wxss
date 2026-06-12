@@ -97,6 +97,23 @@
   color: #bcae9d;
 }
 
+.auth-action-button {
+  margin: 14rpx 0 0;
+  min-width: 176rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  padding: 0 22rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffe4cf;
+  border: 1rpx solid rgba(255, 106, 0, 0.32);
+  font-size: 24rpx;
+}
+
+.auth-action-button::after {
+  border: none;
+}
+
 .hero-summary {
   margin-top: 12rpx;
   font-size: 22rpx;

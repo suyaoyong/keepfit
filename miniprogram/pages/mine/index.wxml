@@ -16,7 +16,14 @@
       </view>
       <view class="user-meta">
         <view class="user-name">{{profile.nickName}}</view>
-        <view class="user-status">账号状态：{{profile.status}}</view>
+        <view class="user-status">账号状态：{{profile.statusText}}</view>
+        <button
+          class="auth-action-button"
+          wx:if="{{profile.actionText}}"
+          bindtap="goLogin"
+        >
+          {{profile.actionText}}
+        </button>
       </view>
     </view>
     <view class="hero-summary">你是：{{identityLevelText}}，持续训练保持升级节奏。</view>

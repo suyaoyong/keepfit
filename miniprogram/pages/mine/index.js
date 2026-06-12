@@ -32,6 +32,16 @@ function buildDefaultAiProfile() {
   };
 }
 
+function mergeAiRequiredProfile(source, base = buildDefaultAiProfile()) {
+  const data = source && typeof source === "object" ? source : {};
+  return {
+    ...base,
+    heightCm: data.heightCm || base.heightCm || "",
+    weightKg: data.weightKg || base.weightKg || "",
+    weeklyTrainingDays: data.weeklyTrainingDays || base.weeklyTrainingDays || "",
+  };
+}
+
 function pad2(value) {
   return `${value}`.padStart(2, "0");
 }
@@ -136,6 +146,49 @@ function buildAiProfileSummary(profile) {
   };
 }
 
+function buildAuthStatusText(profile) {
+  if (profile?.status === "authorized") {
+    return "已登录";
+  }
+  if (profile?.status === "error") {
+    return "登录状态读取失败";
+  }
+  return "未登录";
+}
+
+function buildAuthActionText(profile) {
+  if (profile?.status === "authorized" || profile?.status === "error") {
+    return "";
+  }
+  return "微信一键登录";
+}
+
+function buildProfileDisplayName(profile) {
+  const rawName = String(profile?.nickName || "").trim();
+  if (rawName && rawName !== "未登录") {
+    return rawName;
+  }
+  if (profile?.status === "authorized") {
+    return "已登录用户";
+  }
+  if (profile?.status === "error") {
+    return "状态未知";
+  }
+  return "未登录";
+}
+
+function normalizeAuthProfile(source) {
+  const profile = {
+    nickName: source?.nickName || "",
+    avatarUrl: source?.avatarUrl || "",
+    status: source?.status || "guest",
+  };
+  profile.statusText = buildAuthStatusText(profile);
+  profile.actionText = buildAuthActionText(profile);
+  profile.nickName = buildProfileDisplayName(profile);
+  return profile;
+}
+
 Page({
   data: {
     loading: false,
@@ -143,6 +196,8 @@ Page({
       nickName: "未登录",
       avatarUrl: "",
       status: "guest",
+      statusText: "未登录",
+      actionText: "微信一键登录",
     },
     coreEntries: [
       { id: "plan", title: "计划设置", desc: "创建/调整训练计划", action: "goPlanSetup" },
@@ -198,11 +253,7 @@ Page({
     const nextData = {};
 
     if (cachedProfile && typeof cachedProfile === "object") {
-      nextData.profile = {
-        nickName: cachedProfile.nickName || "未登录",
-        avatarUrl: cachedProfile.avatarUrl || "",
-        status: cachedProfile.status || "guest",
-      };
+      nextData.profile = normalizeAuthProfile(cachedProfile);
     }
 
     if (cachedSnapshot && typeof cachedSnapshot === "object") {
@@ -226,14 +277,15 @@ Page({
     this.setData({ loading: true });
     try {
       const data = await callCloud("auth", { action: "profile" });
-      const profile = {
-        nickName: data?.nickName || "未登录",
-        avatarUrl: data?.avatarUrl || "",
-        status: data?.status || "guest",
-      };
+      const profile = normalizeAuthProfile(data);
       this.setData({ profile });
       wx.setStorageSync(MINE_PROFILE_CACHE_KEY, profile);
     } catch (error) {
+      this.setData({
+        profile: normalizeAuthProfile({
+          status: "error",
+        }),
+      });
       wx.showToast({ title: error?.message || "加载用户信息失败", icon: "none" });
     } finally {
       this.setData({ loading: false });
@@ -256,6 +308,10 @@ Page({
     wx.navigateTo({ url: "/pages/workout-history/index" });
   },
 
+  goLogin() {
+    wx.navigateTo({ url: "/pages/login/index" });
+  },
+
   goQiutuBook() {
     wx.navigateTo({ url: "/pages/book-detail/index?bookId=qiutujianshen" });
   },
@@ -264,18 +320,33 @@ Page({
     this.setData({ showAiProfileModal: true });
   },
 
-  loadAiProfile() {
+  async loadAiProfile() {
     const stored = wx.getStorageSync(AI_PROFILE_KEY);
+    let aiProfile = buildDefaultAiProfile();
     if (!stored || typeof stored !== "object") {
-      this.setData({ aiProfile: buildDefaultAiProfile() });
-      return;
-    }
-    this.setData({
-      aiProfile: {
+      this.setData({ aiProfile });
+    } else {
+      aiProfile = {
         ...buildDefaultAiProfile(),
         ...stored,
-      },
-    });
+      };
+      this.setData({ aiProfile });
+    }
+
+    try {
+      const cloudProfile = await callCloud("profile", { action: "get" });
+      if (!cloudProfile || typeof cloudProfile !== "object") {
+        return;
+      }
+      const merged = mergeAiRequiredProfile(cloudProfile, aiProfile);
+      wx.setStorageSync(AI_PROFILE_KEY, merged);
+      this.setData({
+        aiProfile: merged,
+        aiProfileSummary: buildAiProfileSummary(merged),
+      });
+    } catch (error) {
+      // Local cache remains usable when cloud profile is temporarily unavailable.
+    }
   },
 
   onAiProfileInput(event) {
@@ -313,10 +384,22 @@ Page({
     return profile;
   },
 
-  onSaveAiProfile() {
-    this.saveAiProfile();
-    this.setData({ showAiProfileModal: false });
-    wx.showToast({ title: "训练基础资料已保存", icon: "success" });
+  async onSaveAiProfile() {
+    const profile = this.saveAiProfile();
+    try {
+      await callCloud("profile", {
+        action: "set",
+        profile: {
+          heightCm: profile.heightCm,
+          weightKg: profile.weightKg,
+          weeklyTrainingDays: profile.weeklyTrainingDays,
+        },
+      });
+      this.setData({ showAiProfileModal: false });
+      wx.showToast({ title: "训练基础资料已保存", icon: "success" });
+    } catch (error) {
+      wx.showToast({ title: error?.message || "云端同步失败", icon: "none" });
+    }
   },
 
   onCloseAiProfileModal() {

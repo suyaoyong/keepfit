@@ -6,6 +6,27 @@ cloud.init({
 
 const db = cloud.database();
 
+const PROFILE_FIELDS = [
+  "abilityLevel",
+  "trainingFrequency",
+  "sessionDuration",
+  "injuryNotes",
+  "heightCm",
+  "weightKg",
+  "weeklyTrainingDays",
+];
+
+function pickMergedProfileData(input, existing = {}) {
+  return PROFILE_FIELDS.reduce((acc, field) => {
+    if (Object.prototype.hasOwnProperty.call(input, field)) {
+      acc[field] = input[field] || "";
+    } else {
+      acc[field] = existing[field] || "";
+    }
+    return acc;
+  }, {});
+}
+
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext();
   const openid = wxContext.OPENID;
@@ -18,20 +39,17 @@ exports.main = async (event, context) => {
 
   if (action === "set") {
     const now = db.serverDate();
-    const data = {
-      openid,
-      abilityLevel: profile.abilityLevel || "",
-      trainingFrequency: profile.trainingFrequency || "",
-      sessionDuration: profile.sessionDuration || "",
-      injuryNotes: profile.injuryNotes || "",
-      updatedAt: now,
-    };
-
     const existing = await db
       .collection("profile")
       .where({ openid })
       .limit(1)
       .get();
+    const existingProfile = existing.data[0] || {};
+    const data = {
+      openid,
+      ...pickMergedProfileData(profile, existingProfile),
+      updatedAt: now,
+    };
 
     if (existing.data.length) {
       await db.collection("profile").doc(existing.data[0]._id).update({ data });
